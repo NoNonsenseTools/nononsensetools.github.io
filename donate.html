@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark only" />
+  <title>Donate — No-Nonsense</title>
+  <meta name="description" content="Support No-Nonsense: open-source, privacy-first tools that run entirely in your browser." />
+
+  <!-- Social -->
+  <meta property="og:title" content="Donate — No-Nonsense">
+  <meta property="og:description" content="Support 100% client-side, privacy-first tools.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#000;          /* page background */
+      --surface:#111;     /* cards, hover */
+      --text:#fff;        /* primary text */
+      --muted:#a9a9a9;    /* secondary text */
+      --ring:#2c2c2c;     /* subtle borders */
+      --focus:#4D4DFF;    /* single accent (optional) */
+    }
+
+    html, body { height: 100%; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .screen {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+               max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+      box-sizing: border-box;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+    }
+
+    header, footer { display: flex; align-items: center; justify-content: space-between; }
+    header .brand { display:flex; align-items:center; gap:12px; }
+
+    .logo {
+      width: 50px; height: 50px; min-width: 40px;
+      background: #000;
+      display:grid; place-items:center;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .lockup { display:flex; flex-direction:column; line-height:1.1; }
+    .name { font-weight: 800; letter-spacing: 0.2px; }
+    .tag  { color: var(--muted); font-size: 12.5px; }
+
+    .hero { display:grid; place-items:center; text-align:center; }
+    .hero h1 { 
+      font-size: clamp(24px, 4vw, 36px);
+      margin: 6px 0 8px;
+      font-weight: 900;
+    }
+    .hero p { color: var(--muted); margin: 0 0 20px; font-size: clamp(14px, 2vw, 16px); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      max-width: 920px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .card {
+      border: 1px solid var(--ring);
+      background: #0b0b0b;
+      border-radius: 14px;
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .card:hover { transform: translateY(-1px); background: var(--surface); border-color:#2f2f2f; }
+    .card h3 { margin: 0; font-size: 16px; }
+    .card p  { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .btn {
+      appearance:none;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--ring);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      width: 100%;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn:hover { transform: translateY(-1px); background: var(--surface); border-color: #2f2f2f; }
+    .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+    footer { color: var(--muted); font-size: 13px; gap:12px; }
+    .spacer { flex: 1; }
+
+    @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ===== PRELOADER (top gradient bar only, no percentage) ===== */
+    .nn-pre { 
+      position: fixed; inset: 0; z-index: 9999;
+      display: grid; grid-template-rows: 2px 1fr;
+      background:
+        radial-gradient(1000px 1000px at 50% 100%, color-mix(in lab, var(--surface) 35%, transparent), transparent),
+        radial-gradient(900px 900px at 0% 0%, color-mix(in lab, var(--surface) 25%, transparent), transparent),
+        var(--bg);
+      color: var(--text);
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+    .nn-pre.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .nn-pre__bar {
+      position: relative; height: 2px; overflow: hidden;
+      background: color-mix(in lab, var(--ring) 60%, transparent);
+      --p: 0; /* 0–100 */
+    }
+    .nn-pre__bar > i {
+      position: absolute; inset: 0 auto 0 0;
+      width: calc(var(--p) * 1%); height: 100%;
+      background: linear-gradient(90deg, rgba(255,255,255,.25), rgba(255,255,255,.92) 55%, rgba(255,255,255,.25));
+      transition: width .12s ease;
+      will-change: width;
+    }
+
+    .nn-pre__center { display: grid; place-items: center; padding: 28px; }
+    .nn-pre__sub {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: clamp(12px, 3.2vw, 14px);
+      letter-spacing: .2px;
+      text-align: center;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nn-pre__bar > i { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- THEME LOADER (top bar only) -->
+  <div id="nn-pre" class="nn-pre" role="alert" aria-live="polite" aria-busy="true">
+    <div class="nn-pre__bar"><i></i></div>
+    <div class="nn-pre__center">
+      <div class="nn-pre__sub" id="nn-sub">No-Nonsense</div>
+    </div>
+  </div>
+
+  <main class="screen" role="application">
+    <header aria-label="Brand">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <!-- replace with your logo if available -->
+          <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">
+            <rect width="48" height="48" fill="#000" rx="8"></rect>
+            <path d="M10 33V15h4l10 12V15h4v18h-4L14 21v12h-4z" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="lockup">
+          <div class="name">No-Nonsense<span aria-hidden="true">™</span></div>
+          <div class="tag">No servers. No tracking. Just utility.</div>
+        </div>
+      </div>
+      <div>
+        <a class="btn" href="./mother.html" title="Back to Home">Home</a>
+      </div>
+    </header>
+
+    <section class="hero" aria-label="Donate intro">
+      <div>
+        <h1>Support No-Nonsense</h1>
+        <p>Your donation helps keep these tools fast, private, and free for everyone.</p>
+      </div>
+    </section>
+
+    <section aria-label="Donation methods" style="display:grid;place-items:center;">
+      <div class="grid">
+        <div class="card">
+          <h3>UPI</h3>
+          <p>Instant, zero extra fees (India).</p>
+          <!-- Replace href with your UPI deep-link -->
+          <a class="btn" href="#" aria-disabled="true">Pay via UPI</a>
+        </div>
+
+        <div class="card">
+          <h3>GitHub Sponsors</h3>
+          <p>Recurring monthly support with perks.</p>
+          <!-- Replace with your sponsors URL -->
+          <a class="btn" href="#" aria-disabled="true">Sponsor on GitHub</a>
+        </div>
+
+        <div class="card">
+          <h3>PayPal</h3>
+          <p>Global one-time or recurring donation.</p>
+          <!-- Replace with your PayPal.me or hosted button -->
+          <a class="btn" href="#" aria-disabled="true">Donate via PayPal</a>
+        </div>
+
+        <div class="card" style="display: none;">
+          <h3>Ko-fi</h3>
+          <p>Buy a coffee ☕ to fuel development.</p>
+          <!-- Replace with your Ko-fi URL -->
+          <a class="btn" href="#" aria-disabled="true">Support on Ko-fi</a>
+        </div>
+
+        <div class="card" style="display: none;">
+          <h3>Crypto</h3>
+          <p>BTC / ETH / USDT (add addresses).</p>
+          <!-- Replace with your addresses page -->
+          <a class="btn" href="#" aria-disabled="true">View Addresses</a>
+        </div>
+
+        <div class="card" style="display: none;">
+          <h3>Bank Transfer</h3>
+          <p>Direct transfer (INR/International).</p>
+          <!-- Replace with your bank details page -->
+          <a class="btn" href="#" aria-disabled="true">Get Details</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>© <span id="y"></span> No-Nonsense</span>
+      <span class="spacer"></span>
+      <span>Open source • MIT License</span>
+    </footer>
+  </main>
+
+  <script>
+    // Year
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Keep non-scroll behavior
+    const prevent = e => { e.preventDefault(); };
+    ['wheel','touchmove'].forEach(t=>document.addEventListener(t, prevent, {passive:false}));
+  </script>
+
+  <script>
+    // Top bar loader only (no percentage) + min 2s visible + offline/slow hint
+    (function () {
+      const pre  = document.getElementById('nn-pre');
+      const bar  = pre.querySelector('.nn-pre__bar');
+      const sub  = document.getElementById('nn-sub');
+
+      let target = 90;      // stays around 90% until load
+      let value  = 0;       // animated 0..100
+      const minShow = 2000; // ms
+      const t0 = performance.now();
+      let raf;
+
+      function setBar(p) {
+        bar.style.setProperty('--p', Math.min(100, Math.max(0, p)).toFixed(2));
+      }
+
+      function updateSub() {
+        if (!sub) return;
+        if (!navigator.onLine) {
+          sub.textContent = 'Offline mode — some features may be limited';
+          return;
+        }
+        const v = Math.max(0, Math.min(100, value));
+        if ((performance.now() - t0) > 3000 && v < 30) {
+          sub.textContent = 'your internet might be slow';
+        } else if (v < 100) {
+          sub.textContent = 'No-Nonsense';
+        } else {
+          sub.textContent = 'Ready';
+        }
+      }
+
+      function render() {
+        value += (target - value) * 0.12;
+        if (target === 100 && value > 99.6) value = 100;
+
+        setBar(value);
+        updateSub();
+
+        if (value < 100) {
+          raf = requestAnimationFrame(render);
+        } else {
+          const left = Math.max(0, minShow - (performance.now() - t0));
+          setTimeout(() => {
+            pre.setAttribute('aria-busy', 'false');
+            pre.classList.add('is-hidden');
+          }, left);
+        }
+      }
+
+      // Start animating
+      raf = requestAnimationFrame(render);
+
+      // Complete on load
+      window.addEventListener('load', () => { target = 100; }, { once:true });
+
+      // Live network status
+      window.addEventListener('online',  updateSub);
+      window.addEventListener('offline', updateSub);
+      updateSub();
+
+      // Public API (optional)
+      window.hideLoader = function(){ target = 100; };
+
+      // Safety fallback
+      setTimeout(() => (target = 100), 8000);
+    })();
+  </script>
+</body>
+</html>

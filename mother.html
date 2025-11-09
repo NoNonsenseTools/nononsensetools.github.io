@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark only" />
+  <title>No-Nonsense : Client-Side Utilities</title>
+  <meta name="description" content="No-Nonsense builds fast, open-source, privacy-first tools that run entirely in your browser. No servers. No tracking. Just utility." />
+
+  <!-- Social share (adjust og:image later) -->
+  <meta property="og:title" content="No-Nonsense — 100% Client-Side Utilities">
+  <meta property="og:description" content="No servers. No tracking. Just utility.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://nononsensetools.github.io/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#000;          /* page background */
+      --surface:#111;     /* cards, hover */
+      --text:#fff;        /* primary text */
+      --muted:#a9a9a9;    /* secondary text */
+      --ring:#2c2c2c;     /* subtle borders */
+      --focus:#4D4DFF;    /* single accent (optional) */
+    }
+
+    /* Non-scrollable full-viewport layout */
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      overflow: hidden; /* <- prevents scroll */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Safe area and sizing for mobile (dynamic viewport units) */
+    .screen {
+      position: relative;
+      width: 100vw;
+      height: 100dvh; /* respects mobile browser chrome */
+      padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+               max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+      box-sizing: border-box;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+    }
+
+    header, footer { display: flex; align-items: center; justify-content: space-between; }
+    header .brand { display:flex; align-items:center; gap:12px; }
+
+    /* NN logo — inline SVG square */
+    .logo {
+      width: 50px; height: 50px; min-width: 40px;
+      background: #000;
+      display:grid; place-items:center;
+      border-radius: 8px;
+    }
+    .lockup { display:flex; flex-direction:column; line-height:1.1; }
+    .name { font-weight: 800; letter-spacing: 0.2px; }
+    .tag  { color: var(--muted); font-size: 12.5px; }
+
+    .hero {
+      display:grid; place-items:center;
+      text-align:center;
+    }
+    .hero h1 { 
+      font-size: clamp(24px, 4vw, 36px);
+      margin: 6px 0 8px;
+      font-weight: 900;
+    }
+    .hero p {
+      color: var(--muted);
+      margin: 0 0 20px;
+      font-size: clamp(14px, 2vw, 16px);
+    }
+
+    /* Tool buttons */
+    .tools {
+      display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+    }
+    .tool {
+      appearance:none; border:1px solid var(--ring);
+      background: #0b0b0b; color: var(--text);
+      padding: 14px 16px; border-radius:12px;
+      font-weight:600; letter-spacing:.2px;
+      text-decoration:none; min-width: 160px; text-align:center;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .tool:hover { transform: translateY(-1px); background: var(--surface); border-color:#2f2f2f; }
+    .tool:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+    footer { color: var(--muted); font-size: 13px; gap:12px; }
+    .spacer { flex: 1; }
+    .donate {
+      color: var(--text); text-decoration:none; 
+      border:1px solid var(--ring); padding:8px 12px; border-radius:10px;
+    }
+    .donate:hover { background: var(--surface); }
+
+    /* Prevent wrap explosions on tiny screens while staying non-scroll */
+    @media (max-width: 360px) {
+      .tools { gap:8px; }
+      .tool { min-width: 46%; padding: 12px 10px; }
+      .logo { width: 36px; height: 36px; }
+    }
+
+    /* ===== THEME PRELOADER (Top gradient bar + odometer %) ===== */
+    .nn-pre { 
+      position: fixed; inset: 0; z-index: 9999;
+      display: grid; grid-template-rows: 2px 1fr;
+      background:
+        radial-gradient(1000px 1000px at 50% 100%, color-mix(in lab, var(--surface) 35%, transparent), transparent),
+        radial-gradient(900px 900px at 0% 0%, color-mix(in lab, var(--surface) 25%, transparent), transparent),
+        var(--bg);
+      color: var(--text);
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+    .nn-pre.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    /* Top progress bar: smooth white GRADIENT fill */
+    .nn-pre__bar {
+      position: relative; height: 2px; overflow: hidden;
+      background: color-mix(in lab, var(--ring) 60%, transparent);
+      --p: 0; /* 0–100 */
+    }
+    .nn-pre__bar > i {
+      position: absolute; inset: 0 auto 0 0;
+      width: calc(var(--p) * 1%); height: 100%;
+      background: linear-gradient(90deg, rgba(255,255,255,.25), rgba(255,255,255,.92) 55%, rgba(255,255,255,.25));
+      transition: width .12s ease;
+      will-change: width;
+    }
+
+    /* Center container */
+    .nn-pre__center { display: grid; place-items: center; padding: 28px; }
+
+    /* Odometer % — unique, minimal */
+    .nn-odo {
+      display: inline-flex; align-items: baseline; gap: .15ch;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-size: clamp(28px, 10vw, 60px);
+      font-weight: 900; line-height: 1;
+      font-variant-numeric: tabular-nums; /* fixed-width digits */
+      user-select: none;
+    }
+    .nn-odo .col {
+      position: relative; width: 0.66ch; height: 1em; overflow: hidden;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+    }
+    .nn-odo .stack {
+      display: flex; flex-direction: column;
+      transform: translateY(var(--y, 0em));
+      transition: transform .35s cubic-bezier(.2,.8,.2,1);
+      will-change: transform;
+    }
+    .nn-odo .stack span { height: 1em; line-height: 1; }
+
+    .nn-odo .pct { opacity: .2; }
+
+    /* Sub-label (muted) */
+    .nn-pre__sub {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: clamp(12px, 3.2vw, 14px);
+      letter-spacing: .2px;
+      text-align: center;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .nn-pre__bar > i { transition: none; }
+      .nn-odo .stack { transition: none; }
+    }
+    /* Adaptive, accessible pulsating glow */
+    @property --glow-strength {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.glow-btn {
+  --glow-color: light-dark(rgb(255 255 255 / .35), rgb(255 255 255 / .70));
+  --glow-base: 2px;
+  --glow-radius: 10px;
+  --glow-spread: 2px;
+  --glow-strength: 0;
+
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .6rem 1.1rem;
+  border-radius: .65rem;
+  background: transparent;
+  color: rgb(255 255 255 / .85);
+
+  border: 1.5px solid rgb(255 255 255 / .25);
+  outline: var(--glow-base) solid rgb(255 255 255 / .25);
+
+  box-shadow:
+    0 0 calc(var(--glow-radius) + 8px * var(--glow-strength))
+    calc(var(--glow-spread) + 2px * var(--glow-strength))
+    color-mix(in oklab, var(--glow-color) 100%, transparent);
+
+  animation: glow-pulse 2.2s ease-in-out infinite;
+  cursor: pointer;
+  transition: 
+    color .25s ease, 
+    background-color .25s ease, 
+    filter .25s ease;
+}
+
+.glow-btn svg {
+  fill: currentColor;
+  transition: fill .25s ease;
+}
+
+/* hover behavior: icon fill white, text becomes black inside white glass */
+.glow-btn:hover {
+  background: rgb(255 255 255 / .85);
+  color: black;
+  filter: drop-shadow(0 0 6px var(--glow-color)) drop-shadow(0 0 12px var(--glow-color));
+}
+
+/* Stronger cue on keyboard focus */
+.glow-btn:focus-visible {
+  --glow-strength: 1;
+  outline-color: rgb(255 255 255 / .6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-btn { animation: none; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { --glow-strength: .15; }
+  50%      { --glow-strength: 1; }
+}
+
+  </style>
+</head>
+<body>
+  <!-- THEME LOADER -->
+  <div id="nn-pre" class="nn-pre" role="alert" aria-live="polite" aria-busy="true">
+    <div class="nn-pre__bar"><i></i></div>
+    <div class="nn-pre__center">
+      <div aria-hidden="true" class="nn-odo">
+        <!-- Hundreds (hidden until 100) -->
+        <span class="col col-h"><span class="stack">
+          <span>0</span><span>1</span>
+        </span></span>
+        <!-- Tens -->
+        <span class="col col-t"><span class="stack">
+          <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+          <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>0</span>
+        </span></span>
+        <!-- Ones (with wrap 0 at end) -->
+        <span class="col col-o"><span class="stack">
+          <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+          <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>0</span>
+        </span></span>
+        <span class="pct">%</span>
+      </div>
+      <!-- Minimal subtext + dynamic offline/slow hints -->
+      <div class="nn-pre__sub" id="nn-sub" aria-live="polite">Hi!</div>
+    </div>
+  </div>
+
+  <main class="screen" role="application">
+    <header aria-label="Brand">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <img src="./logo.jpg" alt="NN Logo" style="width:100%;height:100%;object-fit:contain;">
+        </div>
+        <div class="lockup">
+          <div class="name">No-Nonsense<span aria-hidden="true">™</span></div>
+          <div class="tag">No servers. No tracking. Just Utility.</div>
+        </div>
+      </div>
+      <div>
+        <a class="donate glow-btn" href="./donate.html" title="Support development">Donate</a>
+      </div>
+    </header>
+
+    <section class="hero" aria-label="Overview">
+      <div>
+        <h1 style="font-size: 50px;">Coming soon!</h1>
+        <h1>Fast, open-source tools that run entirely in your browser.</h1>
+        <p>Everything is 100% client-side. Your files never leave your device.</p>
+        <nav class="tools" aria-label="Tools">
+          <!-- Update hrefs when you publish each tool -->
+          <a class="tool" href="https://nononsensetools.github.io/nnpdf/" rel="noopener">NNpdf — PDF Editor</a>
+          <a class="tool" href="https://nononsensetools.github.io/nnic/"  rel="noopener">NNic — Image Compressor</a>
+          <a class="tool" href="https://nononsensetools.github.io/nnrf/"  rel="noopener">NNrf — Resume Formatter</a>
+        </nav>
+      </div>
+    </section>
+
+    <footer>
+      <span>© <span id="y"></span> No-Nonsense</span>
+      <span class="spacer"></span>
+      <span>Open source • MIT License</span>
+    </footer>
+  </main>
+
+  <script>
+    // Small helpers
+    document.getElementById('y').textContent = new Date().getFullYear();
+    // Trap wheel/keys to keep non-scroll behavior (optional)
+    const prevent = e => { e.preventDefault(); };
+    ['wheel','touchmove'].forEach(t=>document.addEventListener(t, prevent, {passive:false}));
+  </script>
+
+  <script>
+    // Smooth progress + odometer digits + min 2s display + offline/slow hints
+    (function () {
+      const pre  = document.getElementById('nn-pre');
+      const bar  = pre.querySelector('.nn-pre__bar');
+      const fill = bar.querySelector('i');
+
+      // Odometer columns
+      const colH = pre.querySelector('.col-h .stack'); // 0..1 (for 100)
+      const colT = pre.querySelector('.col-t .stack'); // 0..9..0
+      const colO = pre.querySelector('.col-o .stack'); // 0..9..0
+
+      const sub = document.getElementById('nn-sub');
+
+      let target = 90;     // hover at 90% until window 'load'
+      let value = 0;       // animated 0..100
+      const minShow = 2000;
+      const t0 = performance.now();
+      let raf;
+
+      function setBar(p) {
+        bar.style.setProperty('--p', p.toFixed(2));
+      }
+
+      // Translate a stack to a digit + fractional part (supports smooth between digits)
+      function setStack(el, digit, frac) {
+        const yEm = -(digit + frac);
+        el.style.transform = `translateY(${yEm}em)`;
+      }
+
+      function updateNetworkSubtext() {
+        if (!sub) return;
+        if (!navigator.onLine) {
+          sub.textContent = 'You are Offline';
+          return;
+        }
+        const v = Math.max(0, Math.min(100, value));
+        if ((performance.now() - t0) > 400 && v < 30) {
+          sub.textContent = '*your internet might be slow*';
+        } else if (v < 100) {
+          sub.textContent = 'on the verge!';
+        } else {
+          sub.textContent = 'ready!';
+        }
+      }
+
+      function render() {
+        // ease toward the current target
+        value += (target - value) * 0.12;
+        if (target === 100 && value > 99.6) value = 100;
+
+        // update bar
+        setBar(value);
+
+        // compute digits
+        const v = Math.max(0, Math.min(100, value));
+        const vInt = Math.floor(v);
+        const frac = v - vInt;
+
+        const h = vInt === 100 ? 1 : 0;
+        const t = vInt === 100 ? 0 : Math.floor(vInt / 10) % 10;
+        const o = vInt === 100 ? 0 : vInt % 10;
+
+        // ones scroll smoothly; tens snap; hundreds only at 100
+        const onesFrac = (vInt === 100) ? 0 : frac;
+
+        if (colH) colH.style.transform = `translateY(${-h}em)`;
+        setStack(colT, t, 0);
+        setStack(colO, o, onesFrac);
+
+        updateNetworkSubtext();
+
+        if (value < 100) {
+          raf = requestAnimationFrame(render);
+        } else {
+          const left = Math.max(0, minShow - (performance.now() - t0));
+          setTimeout(() => {
+            pre.setAttribute('aria-busy', 'false');
+            pre.classList.add('is-hidden');
+          }, left);
+        }
+      }
+
+      // Start animating immediately
+      raf = requestAnimationFrame(render);
+
+      // Finish to 100 on load
+      window.addEventListener('load', () => { target = 100; }, { once: true });
+
+      // Live network status updates (offline/online)
+      window.addEventListener('online',  updateNetworkSubtext);
+      window.addEventListener('offline', updateNetworkSubtext);
+      updateNetworkSubtext(); // initial
+
+      // Optional public API: finish early after your own async work
+      window.hideLoader = function () { target = 100; };
+
+      // Safety fallback (if load never fires)
+      setTimeout(() => (target = 100), 8000);
+    })();
+  </script>
+</body>
+</html>
