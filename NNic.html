@@ -12,7 +12,7 @@
   h1{font-size:18px;margin:14px 0 6px;font-weight:600}
   .sub{opacity:.75;font-size:13px;margin-bottom:18px}/* ultra-minimal loader: a fading dot */ .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out} @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}} #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease} #loader.hide{opacity:0;pointer-events:none}
 
-/* Typewriter */ .typewrap{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;letter-spacing:0.6px;font-size:14px} .type{display:inline-block;min-width:160px} .caret{display:inline-block;margin-left:6px;width:10px;height:18px;vertical-align:bottom;background:transparent;border-left:2px solid #fff;animation:blinkcaret 900ms steps(1) infinite} @keyframes blinkcaret{50%{opacity:0}}
+/* Typewriter */ .typewrap{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;letter-spacing:0.6px;font-size:14px} .type{display:inline-block;min-width:160px} @keyframes blinkcaret{50%{opacity:0}}
 
 /* ensure no scrollbars appear */ ::-webkit-scrollbar{display:none} </style>
 
@@ -20,12 +20,16 @@
 <body>
   <div id="loader"><div class="dot"></div></div>  <img src="logo.jpg" class="logo" alt="logo">
   <h1>Under Construction</h1>
-  <div class="sub">NoNonsense</div>  <div class="typewrap" aria-live="polite"><span class="type" id="type"></span><span class="caret" aria-hidden="true"></span></div>  <script>
+  <div class="sub">NoNonsense</div>  <div class="typewrap" aria-live="polite"><span class="type" id="type"></span></div>  <script>
     // loader hides when page fully loaded
     window.addEventListener('load',()=>{
       const loader = document.getElementById('loader');
-      loader.classList.add('hide');
-      setTimeout(()=>loader.remove(),700);
+      // ensure loader stays visible at least 500ms
+      setTimeout(()=>{
+        loader.classList.add('hide');
+        setTimeout(()=>loader.remove(),700);
+      }, 500);
+    });(),700);
     });
 
     // typewriter that cycles through words
