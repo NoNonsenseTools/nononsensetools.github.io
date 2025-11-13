@@ -390,346 +390,365 @@
   <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   <script>
-    // Elements
-    const pre = document.getElementById('nn-pre');
-    const preSub = document.getElementById('nn-sub');
-    const fileInput = document.getElementById('fileInput');
-    const pickBtn = document.getElementById('pickBtn');
-    const dropArea = document.getElementById('dropArea');
-    const fileListEl = document.getElementById('fileList');
-    const toActionsBtn = document.getElementById('toActionsBtn');
-    const clearFilesBtn = document.getElementById('clearFilesBtn');
-    const actMerge = document.getElementById('actMerge');
-    const actExtract = document.getElementById('actExtract');
-    const actReorder = document.getElementById('actReorder');
-    const actSplit = document.getElementById('actSplit');
-    const startProcessBtn = document.getElementById('startProcessBtn');
-    const backToFilesBtn = document.getElementById('backToFilesBtn');
-    const rangesInput = document.getElementById('ranges');
-    const partsInput = document.getElementById('parts');
-    const outputsList = document.getElementById('outputsList');
-    const clearOutputsBtn = document.getElementById('clearOutputsBtn');
-    // deviceState element removed — defensive queries below
-    const deviceState = document.getElementById('deviceState'); // will be null
-    const miniLoader = deviceState ? deviceState.querySelector('.mini-loader') : null;
-    const deviceStateMsg = document.getElementById('deviceStateMsg'); // will be null
+// Elements
+const pre = document.getElementById('nn-pre');
+const preSub = document.getElementById('nn-sub');
+const fileInput = document.getElementById('fileInput');
+const pickBtn = document.getElementById('pickBtn');
+const dropArea = document.getElementById('dropArea');
+const fileListEl = document.getElementById('fileList');
+const toActionsBtn = document.getElementById('toActionsBtn');
+const clearFilesBtn = document.getElementById('clearFilesBtn');
+const actMerge = document.getElementById('actMerge');
+const actExtract = document.getElementById('actExtract');
+const actReorder = document.getElementById('actReorder');
+const actSplit = document.getElementById('actSplit');
+const startProcessBtn = document.getElementById('startProcessBtn');
+const backToFilesBtn = document.getElementById('backToFilesBtn');
+const rangesInput = document.getElementById('ranges');
+const partsInput = document.getElementById('parts');
+const outputsList = document.getElementById('outputsList');
+const clearOutputsBtn = document.getElementById('clearOutputsBtn');
+const deviceState = document.getElementById('deviceState'); 
+const miniLoader = deviceState ? deviceState.querySelector('.mini-loader') : null;
+const deviceStateMsg = document.getElementById('deviceStateMsg'); 
 
-    // Panels
-    const filesPanel = document.getElementById('filesPanel');
-    const actionsPanel = document.getElementById('actionsPanel');
-    const outputsPanel = document.getElementById('outputsPanel');
+// Panels
+const filesPanel = document.getElementById('filesPanel');
+const actionsPanel = document.getElementById('actionsPanel');
+const outputsPanel = document.getElementById('outputsPanel');
 
-    // State
-    let files = [];
-    let pickerLock = false;
-    let currentAction = null;
-    let isProcessing = false;
+// State
+let files = [];
+let pickerLock = false;
+let currentAction = null;
+let isProcessing = false;
 
-    // PDF helpers
-    const { PDFDocument } = PDFLib;
+// PDF helpers
+const { PDFDocument } = PDFLib;
 
-    // show/hide top overlay loader and update subtext
-    function showLoader(text){
-      if (!pre) return;
-      preSub.textContent = text || 'No-Nonsense';
-      pre.classList.add('is-visible');
-      pre.setAttribute('aria-hidden', 'false');
-    }
-    function hideLoader(){
-      if (!pre) return;
-      pre.classList.remove('is-visible');
-      pre.setAttribute('aria-hidden', 'true');
-    }
+// show/hide top overlay loader
+function showLoader(text){
+  if (!pre) return;
+  preSub.textContent = text || 'No-Nonsense';
+  pre.classList.add('is-visible');
+  pre.setAttribute('aria-hidden', 'false');
+}
+function hideLoader(){
+  if (!pre) return;
+  pre.classList.remove('is-visible');
+  pre.setAttribute('aria-hidden', 'true');
+}
 
-    // DEVICE STATE: header mini loader (defensive — safe if element removed)
-    function setDeviceState(s){
-      const text = (s || '').toString();
-      const isLoading = text && text.toLowerCase() !== 'ready';
-      if (isLoading){
-        if (miniLoader) miniLoader.style.display = 'inline-flex';
-        if (deviceStateMsg) deviceStateMsg.textContent = text;
-        showLoader(text);
-      } else {
-        if (miniLoader) miniLoader.style.display = 'none';
-        if (deviceStateMsg) deviceStateMsg.textContent = '';
-        hideLoader();
-      }
-    }
+// DEVICE STATE
+function setDeviceState(s){
+  const text = (s || '').toString();
+  const isLoading = text && text.toLowerCase() !== 'ready';
+  if (isLoading){
+    if (miniLoader) miniLoader.style.display = 'inline-flex';
+    if (deviceStateMsg) deviceStateMsg.textContent = text;
+    showLoader(text);
+  } else {
+    if (miniLoader) miniLoader.style.display = 'none';
+    if (deviceStateMsg) deviceStateMsg.textContent = '';
+    hideLoader();
+  }
+}
 
-    // UX helpers
-    function showToast(msg, timeout=2000){
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(()=>t.classList.remove('show'), timeout);
-    }
+// Toast
+function showToast(msg, timeout=2000){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), timeout);
+}
 
-    function animIn(el){
-      if(!el) return;
-      el.classList.remove('anim-in');
-      void el.offsetWidth;
-      el.classList.add('anim-in');
-      setTimeout(()=>el.classList.remove('anim-in'), 300);
-    }
+function animIn(el){
+  if(!el) return;
+  el.classList.remove('anim-in');
+  void el.offsetWidth;
+  el.classList.add('anim-in');
+  setTimeout(()=>el.classList.remove('anim-in'), 300);
+}
 
-    function goTo(panel){
-      if (window.innerWidth <= 980){
-        filesPanel.classList.add('screen-hidden');
-        actionsPanel.classList.add('screen-hidden');
-        outputsPanel.classList.add('screen-hidden');
-        if (panel === 'files') { filesPanel.classList.remove('screen-hidden'); animIn(filesPanel); }
-        if (panel === 'actions') { actionsPanel.classList.remove('screen-hidden'); animIn(actionsPanel); }
-        if (panel === 'outputs') { outputsPanel.classList.remove('screen-hidden'); animIn(outputsPanel); }
-      } else {
-        if (panel === 'actions') { actionsPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(actionsPanel); }
-        if (panel === 'files') { filesPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(filesPanel); }
-        if (panel === 'outputs') { outputsPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(outputsPanel); }
-      }
-    }
+// Panel switching
+function goTo(panel){
+  if (window.innerWidth <= 980){
+    filesPanel.classList.add('screen-hidden');
+    actionsPanel.classList.add('screen-hidden');
+    outputsPanel.classList.add('screen-hidden');
+    if (panel === 'files') { filesPanel.classList.remove('screen-hidden'); animIn(filesPanel); }
+    if (panel === 'actions') { actionsPanel.classList.remove('screen-hidden'); animIn(actionsPanel); }
+    if (panel === 'outputs') { outputsPanel.classList.remove('screen-hidden'); animIn(outputsPanel); }
+  } else {
+    if (panel === 'actions') { actionsPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(actionsPanel); }
+    if (panel === 'files') { filesPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(filesPanel); }
+    if (panel === 'outputs') { outputsPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(outputsPanel); }
+  }
+}
 
-    function openPicker(){ 
-      if (pickerLock) return; 
-      pickerLock = true; 
-      try{ fileInput.value=''; }catch(e){} 
-      fileInput.click(); 
-      setTimeout(()=>pickerLock=false,800); 
-    }
-    pickBtn.addEventListener('click', e=>{ e.preventDefault(); openPicker(); });
+function openPicker(){ 
+  if (pickerLock) return; 
+  pickerLock = true; 
+  try{ fileInput.value=''; }catch(e){} 
+  fileInput.click(); 
+  setTimeout(()=>pickerLock=false,800); 
+}
+pickBtn.addEventListener('click', e=>{ e.preventDefault(); openPicker(); });
 
-    ['dragenter','dragover','dragleave','drop'].forEach(ev=> dropArea.addEventListener(ev, e=>{
-      e.preventDefault(); e.stopPropagation();
-      if (ev==='dragenter' || ev==='dragover') dropArea.classList.add('drag-over'); else dropArea.classList.remove('drag-over');
-    }));
-    dropArea.addEventListener('drop', e=>{
-      const dt=e.dataTransfer;
-      const list=Array.from(dt.files||[]).filter(f=>f.type==='application/pdf');
-      if (list.length) handleFiles(list);
-    });
-    dropArea.addEventListener('click', ()=> openPicker());
+// Drag/drop
+['dragenter','dragover','dragleave','drop'].forEach(ev=> dropArea.addEventListener(ev, e=>{
+  e.preventDefault(); e.stopPropagation();
+  if (ev==='dragenter' || ev==='dragover') dropArea.classList.add('drag-over'); else dropArea.classList.remove('drag-over');
+}));
+dropArea.addEventListener('drop', e=>{
+  const dt=e.dataTransfer;
+  const list=Array.from(dt.files||[]).filter(f=>f.type==='application/pdf');
+  if (list.length) handleFiles(list);
+});
+dropArea.addEventListener('click', ()=> openPicker());
 
-    fileInput.addEventListener('change', async e=>{
-      const sel=Array.from(e.target.files||[]);
-      if (!sel.length) return;
-      await handleFiles(sel);
-      try{ fileInput.value=''; }catch{}
-    });
+fileInput.addEventListener('change', async e=>{
+  const sel=Array.from(e.target.files||[]);
+  if (!sel.length) return;
+  await handleFiles(sel);
+  try{ fileInput.value=''; }catch{}
+});
 
-    async function handleFiles(selected){
-      if (isProcessing){ showToast('Wait for current operation'); return; }
-      const pdfs = selected.filter(f=>f.type==='application/pdf');
-      if (!pdfs.length){ showToast('No PDF files selected'); return; }
-      setDeviceState('Reading files...');
-      let read=0;
-      for (const f of pdfs){
-        try{ const ab = await f.arrayBuffer(); files.push({file:f,name:f.name,size:f.size,arrayBuffer:ab}); read++; } catch(err){ console.error('read failed',err); showToast('Failed to read '+f.name); }
-      }
-      renderFileList();
-      setDeviceState(''); // idle now
-      showToast(`${read} file(s) added`);
-      toActionsBtn.disabled = files.length === 0;
-      clearFilesBtn.style.display = files.length ? 'inline-flex' : 'none';
-      if (window.innerWidth <= 980) goTo('actions');
-    }
+async function handleFiles(selected){
+  if (isProcessing){ showToast('Wait for current operation'); return; }
+  const pdfs = selected.filter(f=>f.type==='application/pdf');
+  if (!pdfs.length){ showToast('No PDF files selected'); return; }
+  setDeviceState('Reading files...');
+  let read=0;
+  for (const f of pdfs){
+    try{ const ab = await f.arrayBuffer(); files.push({file:f,name:f.name,size:f.size,arrayBuffer:ab}); read++; } catch(err){ console.error('read failed',err); showToast('Failed to read '+f.name); }
+  }
+  renderFileList();
+  setDeviceState('');
+  showToast(`${read} file(s) added`);
+  toActionsBtn.disabled = files.length === 0;
+  clearFilesBtn.style.display = files.length ? 'inline-flex' : 'none';
+  if (window.innerWidth <= 980) goTo('actions');
+}
 
-    function renderFileList(){
-      fileListEl.innerHTML='';
-      if (!files.length){
-        fileListEl.innerHTML = '<div class="muted" style="text-align:center;padding:18px">No files</div>';
-        toActionsBtn.disabled=true;
-        clearFilesBtn.style.display='none';
-        startProcessBtn.disabled = true;
-        return;
-      }
-      files.forEach((f,i)=>{
-        const el = document.createElement('div');
-        el.className='file-item';
-        el.innerHTML = `<div style="width:52px;height:44px;display:grid;place-items:center;border-radius:8px;background:#0a0a0a"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="file-name"><div>${escapeHtml(f.name)}</div><div class="muted" style="font-size:12px">${human(f.size)}</div></div><div style="display:flex;gap:8px"><button class="btn" data-i="${i}">Remove</button></div>`;
-        fileListEl.appendChild(el);
-      });
-      Array.from(fileListEl.querySelectorAll('button')).forEach(b=>b.addEventListener('click', ()=>{
-        const i=Number(b.getAttribute('data-i'));
-        files.splice(i,1);
-        renderFileList();
-        showToast('Removed');
-      }));
-    }
-
-    function human(n){ if (n<1024) return n+' B'; if (n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
-    function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-
-    // Action selection
-    [actMerge, actExtract, actReorder, actSplit].forEach(btn=> btn.addEventListener('click', ()=>{
-      [actMerge, actExtract, actReorder, actSplit].forEach(b=>b.classList.remove('primary'));
-      btn.classList.add('primary');
-      currentAction = btn.id === 'actMerge' ? 'merge' : btn.id === 'actExtract' ? 'extract' : btn.id === 'actReorder' ? 'reorder' : 'split';
-      // Only enable Start if files exist
-      startProcessBtn.disabled = files.length === 0;
-      showToast((currentAction || '').toUpperCase());
-    }));
-
-    backToFilesBtn.addEventListener('click', ()=>{ goTo('files'); });
-    toActionsBtn.addEventListener('click', ()=> goTo('actions'));
-
-    async function processAndDownload(){
-      if (isProcessing) return;
-      if (!files.length) return showToast('Add files first');
-      if (!currentAction) return showToast('Pick an action');
-      isProcessing = true;
-      setDeviceState('Processing...');
-      const op = currentAction;
-      try{
-        // If user chose merge -> always merge all files and download merged.pdf
-        if (op === 'merge'){
-          const bytes = await mergeAll(files);
-          triggerDownload(bytes, 'merged.pdf');
-          showToast('Merged');
-          goTo('outputs');
-          return;
-        }
-
-        // For other operations we need a single PDF bytes buffer.
-        // If multiple files were provided, merge them in memory first (original behavior).
-        const srcBuffer = files.length === 1 ? files[0].arrayBuffer : await mergeAll(files);
-
-        if (op === 'extract'){
-          const ranges = rangesInput.value.trim(); if (!ranges) throw new Error('Enter ranges (e.g. 1-3,5)');
-          const out = await extractRanges(srcBuffer, ranges);
-          triggerDownload(out, 'extracted.pdf');
-        } else if (op === 'reorder'){
-          const order = rangesInput.value.trim(); if (!order) throw new Error('Enter order (e.g. 3,1,2)');
-          const out = await reorderPages(srcBuffer, order);
-          triggerDownload(out, 'reordered.pdf');
-        } else if (op === 'split'){
-          const p = Number(partsInput.value); if (!p || p<2) throw new Error('Enter parts >=2');
-          await splitAndDownload(srcBuffer, p);
-        }
-
-        showToast('Done');
-        goTo('outputs');
-      }catch(err){
-        console.error(err);
-        showToast('Error: '+(err && err.message ? err.message : 'Processing failed'));
-      }finally{
-        isProcessing=false;
-        setDeviceState(''); // back to idle
-      }
-    }
-
-    startProcessBtn.addEventListener('click', ()=>{ processAndDownload(); });
-
-    async function mergeAll(list){
-      if (!list.length) throw new Error('No files to merge');
-      const out = await PDFDocument.create();
-      for (const f of list){
-        const doc = await PDFDocument.load(f.arrayBuffer);
-        const pages = await out.copyPages(doc, doc.getPageIndices());
-        pages.forEach(p=>out.addPage(p));
-      }
-      return await out.save(); // Uint8Array
-    }
-
-    function parseRanges(input){
-      if (!input || !input.trim()) return [];
-      const parts = input.split(',').map(s=>s.trim()).filter(Boolean);
-      const out=[];
-      for (const p of parts){
-        if (p.includes('-')){
-          const [a,b]=p.split('-').map(x=>Number(x.trim()));
-          if (!Number.isNaN(a)&&!Number.isNaN(b)&&a<=b) out.push([a,b]);
-          else throw new Error('Invalid range: '+p);
-        } else {
-          const n=Number(p);
-          if (!Number.isNaN(n)) out.push([n,n]);
-          else throw new Error('Invalid number: '+p);
-        }
-      }
-      return out;
-    }
-
-    async function extractRanges(buffer, rangesStr){
-      const ranges = parseRanges(rangesStr);
-      const src = await PDFDocument.load(buffer);
-      const out = await PDFDocument.create();
-      const total = src.getPageCount();
-      const idxs=[];
-      ranges.forEach(r=>{
-        for (let p=r[0];p<=r[1];p++) if (p>=1&&p<=total) idxs.push(p-1);
-      });
-      if (!idxs.length) throw new Error('No pages matched the ranges');
-      const copied = await out.copyPages(src, idxs);
-      copied.forEach(p=>out.addPage(p));
-      return await out.save();
-    }
-
-    async function reorderPages(buffer, orderStr){
-      const order = orderStr.split(',').map(s=>Number(s.trim())).filter(n=>!Number.isNaN(n));
-      if (!order.length) throw new Error('Invalid order');
-      const src = await PDFDocument.load(buffer);
-      const total = src.getPageCount();
-      const out = await PDFDocument.create();
-      const idxs=[];
-      order.forEach(n=>{ if (n>=1 && n<=total) idxs.push(n-1); });
-      // add remaining pages that were not included in order
-      for (let i=0;i<total;i++) if (!idxs.includes(i)) idxs.push(i);
-      const copied = await out.copyPages(src, idxs);
-      copied.forEach(p=>out.addPage(p));
-      return await out.save();
-    }
-
-    async function splitAndDownload(buffer, parts){
-      const src = await PDFDocument.load(buffer);
-      const total = src.getPageCount();
-      if (total === 0) throw new Error('No pages to split');
-      const per = Math.ceil(total/parts);
-      let part=1;
-      for (let i=0;i<total;i+=per){
-        const out = await PDFDocument.create();
-        const end = Math.min(i+per, total);
-        const idxs=[];
-        for (let j=i;j<end;j++) idxs.push(j);
-        const copied = await out.copyPages(src, idxs);
-        copied.forEach(pg=>out.addPage(pg));
-        const bytes = await out.save();
-        triggerDownload(bytes, `part-${part}.pdf`);
-        part++;
-      }
-    }
-
-    function triggerDownload(bytes, filename){
-      const blob = new Blob([bytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 60000);
-      const row = document.createElement('div');
-      row.className = 'file-item';
-      row.innerHTML = `<div style="width:46px;height:44px;display:grid;place-items:center;border-radius:8px;background:#0a0a0a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;padding-left:8px">${escapeHtml(filename)}</div><div class="muted">Downloaded</div><div><a class="btn" href="${url}" target="_blank">Open</a></div>`;
-      outputsList.prepend(row);
-    }
-
-    clearFilesBtn.addEventListener('click', ()=>{ files=[]; renderFileList(); showToast('Files cleared'); toActionsBtn.disabled=true; });
-    clearOutputsBtn.addEventListener('click', ()=>{ outputsList.innerHTML=''; showToast('Outputs cleared'); });
-
-    // initial state -> idle (no "Ready" text)
+function renderFileList(){
+  fileListEl.innerHTML='';
+  if (!files.length){
+    fileListEl.innerHTML = '<div class="muted" style="text-align:center;padding:18px">No files</div>';
+    toActionsBtn.disabled=true;
+    clearFilesBtn.style.display='none';
+    startProcessBtn.disabled = true;
+    return;
+  }
+  files.forEach((f,i)=>{
+    const el = document.createElement('div');
+    el.className='file-item';
+    el.innerHTML = `<div style="width:52px;height:44px;display:grid;place-items:center;border-radius:8px;background:#0a0a0a"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="file-name"><div>${escapeHtml(f.name)}</div><div class="muted" style="font-size:12px">${human(f.size)}</div></div><div style="display:flex;gap:8px"><button class="btn" data-i="${i}">Remove</button></div>`;
+    fileListEl.appendChild(el);
+  });
+  Array.from(fileListEl.querySelectorAll('button')).forEach(b=>b.addEventListener('click', ()=>{
+    const i=Number(b.getAttribute('data-i'));
+    files.splice(i,1);
     renderFileList();
-    setDeviceState(''); // hide header loader and top overlay
-    if (window.innerWidth <= 980){ goTo('files'); }
+    showToast('Removed');
+  }));
+}
 
-    // prevent double-picker on touch
-    let lastTap = 0;
-    dropArea.addEventListener('touchstart', (e)=>{ const now=Date.now(); if (now - lastTap < 350) e.preventDefault(); lastTap = now; });
+function human(n){ if (n<1024) return n+' B'; if (n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
-    // animate panels on resize
-    let resizeTimer = null;
-    window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer = setTimeout(()=>{ if (window.innerWidth <= 980){ goTo('files'); } }, 200); });
+// Action selection
+[actMerge, actExtract, actReorder, actSplit].forEach(btn=> btn.addEventListener('click', ()=>{
+  [actMerge, actExtract, actReorder, actSplit].forEach(b=>b.classList.remove('primary'));
+  btn.classList.add('primary');
+  currentAction = btn.id === 'actMerge' ? 'merge' : btn.id === 'actExtract' ? 'extract' : btn.id === 'actReorder' ? 'reorder' : 'split';
+  startProcessBtn.disabled = files.length === 0;
+  showToast((currentAction || '').toUpperCase());
+}));
 
-    // hide loader if still visible when window loads
-    window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.remove('is-visible'); pre.setAttribute('aria-hidden','true'); } }, 300); });
-  </script>
+backToFilesBtn.addEventListener('click', ()=>{ goTo('files'); });
+toActionsBtn.addEventListener('click', ()=> goTo('actions'));
+
+async function processAndDownload(){
+  if (isProcessing) return;
+  if (!files.length) return showToast('Add files first');
+  if (!currentAction) return showToast('Pick an action');
+  isProcessing = true;
+  setDeviceState('Processing...');
+  const op = currentAction;
+  try{
+    if (op === 'merge'){
+      const bytes = await mergeAll(files);
+      triggerDownload(bytes, 'merged.pdf');
+      showToast('Merged');
+      goTo('outputs');
+      return;
+    }
+
+    const srcBuffer = files.length === 1 ? files[0].arrayBuffer : await mergeAll(files);
+
+    if (op === 'extract'){
+      const ranges = rangesInput.value.trim(); if (!ranges) throw new Error('Enter ranges (e.g. 1-3,5)');
+      const out = await extractRanges(srcBuffer, ranges);
+      triggerDownload(out, 'extracted.pdf');
+    } else if (op === 'reorder'){
+      const order = rangesInput.value.trim(); if (!order) throw new Error('Enter order (e.g. 3,1,2)');
+      const out = await reorderPages(srcBuffer, order);
+      triggerDownload(out, 'reordered.pdf');
+    } else if (op === 'split'){
+      const p = Number(partsInput.value); if (!p || p<2) throw new Error('Enter parts >=2');
+      await splitAndDownload(srcBuffer, p);
+    }
+
+    showToast('Done');
+    goTo('outputs');
+  }catch(err){
+    console.error(err);
+    showToast('Error: '+(err && err.message ? err.message : 'Processing failed'));
+  }finally{
+    isProcessing=false;
+    setDeviceState('');
+  }
+}
+
+startProcessBtn.addEventListener('click', ()=>{ processAndDownload(); });
+
+async function mergeAll(list){
+  if (!list.length) throw new Error('No files to merge');
+  const out = await PDFDocument.create();
+  for (const f of list){
+    const doc = await PDFDocument.load(f.arrayBuffer);
+    const pages = await out.copyPages(doc, doc.getPageIndices());
+    pages.forEach(p=>out.addPage(p));
+  }
+  return await out.save();
+}
+
+function parseRanges(input){
+  if (!input || !input.trim()) return [];
+  const parts = input.split(',').map(s=>s.trim()).filter(Boolean);
+  const out=[];
+  for (const p of parts){
+    if (p.includes('-')){
+      const [a,b]=p.split('-').map(x=>Number(x.trim()));
+      if (!Number.isNaN(a)&&!Number.isNaN(b)&&a<=b) out.push([a,b]);
+      else throw new Error('Invalid range: '+p);
+    } else {
+      const n=Number(p);
+      if (!Number.isNaN(n)) out.push([n,n]);
+      else throw new Error('Invalid number: '+p);
+    }
+  }
+  return out;
+}
+
+async function extractRanges(buffer, rangesStr){
+  const ranges = parseRanges(rangesStr);
+  const src = await PDFDocument.load(buffer);
+  const out = await PDFDocument.create();
+  const total = src.getPageCount();
+  const idxs=[];
+  ranges.forEach(r=>{
+    for (let p=r[0];p<=r[1];p++) if (p>=1&&p<=total) idxs.push(p-1);
+  });
+  if (!idxs.length) throw new Error('No pages matched the ranges');
+  const copied = await out.copyPages(src, idxs);
+  copied.forEach(p=>out.addPage(p));
+  return await out.save();
+}
+
+async function reorderPages(buffer, orderStr){
+  const order = orderStr.split(',').map(s=>Number(s.trim())).filter(n=>!Number.isNaN(n));
+  if (!order.length) throw new Error('Invalid order');
+  const src = await PDFDocument.load(buffer);
+  const total = src.getPageCount();
+  const out = await PDFDocument.create();
+  const idxs=[];
+  order.forEach(n=>{ if (n>=1 && n<=total) idxs.push(n-1); });
+  for (let i=0;i<total;i++) if (!idxs.includes(i)) idxs.push(i);
+  const copied = await out.copyPages(src, idxs);
+  copied.forEach(p=>out.addPage(p));
+  return await out.save();
+}
+
+async function splitAndDownload(buffer, parts){
+  const src = await PDFDocument.load(buffer);
+  const total = src.getPageCount();
+  if (total === 0) throw new Error('No pages to split');
+  const per = Math.ceil(total/parts);
+  let part=1;
+  for (let i=0;i<total;i+=per){
+    const out = await PDFDocument.create();
+    const end = Math.min(i+per, total);
+    const idxs=[];
+    for (let j=i;j<end;j++) idxs.push(j);
+    const copied = await out.copyPages(src, idxs);
+    copied.forEach(pg=>out.addPage(pg));
+    const bytes = await out.save();
+    triggerDownload(bytes, `part-${part}.pdf`);
+    part++;
+  }
+}
+
+function triggerDownload(bytes, filename){
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  const row = document.createElement('div');
+  row.className = 'file-item';
+  row.innerHTML = `<div style="width:46px;height:44px;display:grid;place-items:center;border-radius:8px;background:#0a0a0a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;padding-left:8px">${escapeHtml(filename)}</div><div class="muted">Downloaded</div><div><a class="btn" href="${url}" target="_blank">Open</a></div>`;
+  outputsList.prepend(row);
+}
+
+clearFilesBtn.addEventListener('click', ()=>{ files=[]; renderFileList(); showToast('Files cleared'); toActionsBtn.disabled=true; });
+clearOutputsBtn.addEventListener('click', ()=>{ outputsList.innerHTML=''; showToast('Outputs cleared'); });
+
+renderFileList();
+setDeviceState('');
+if (window.innerWidth <= 980){ goTo('files'); }
+
+// prevent double-picker on touch
+let lastTap = 0;
+dropArea.addEventListener('touchstart', (e)=>{ const now=Date.now(); if (now - lastTap < 350) e.preventDefault(); lastTap = now; });
+
+
+// ⭐⭐⭐ FIXED ANDROID-SAFE RESIZE HANDLER ⭐⭐⭐
+let resizeTimer = null;
+let prevInnerWidth = window.innerWidth;
+let prevViewportHeight = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const w = window.innerWidth;
+    const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+
+    // Ignore keyboard-triggered height changes
+    if (w === prevInnerWidth && Math.abs(vh - prevViewportHeight) > 120) {
+      prevViewportHeight = vh;
+      return;
+    }
+
+    // Only switch UI when *width breakpoint* changes
+    if (prevInnerWidth > 980 && w <= 980) {
+      goTo('files');
+    }
+
+    prevInnerWidth = w;
+    prevViewportHeight = vh;
+  }, 200);
+});
+
+window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.remove('is-visible'); pre.setAttribute('aria-hidden','true'); } }, 300); });
+</script>
 </body>
 </html>
+
 
