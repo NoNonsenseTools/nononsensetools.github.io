@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark only" />
+  <title>NNpdf — No-Nonsense PDF Editor</title>
+  <meta name="description" content="No-Nonsense single-file client-side PDF toolkit: merge, extract, reorder, split equally. App-like UX." />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg: #000;
+      --card: #0f0f0f;
+      --text: #fff;
+      --muted: #bdbdbd;
+      --ring: rgba(255,255,255,0.06);
+      --black: #000;
+      --white: #fff;
+      --dur: 180ms;
+      --ease: cubic-bezier(.25,.1,.25,1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :root { --dur: 50ms; }
+    }
+
+    html,body{height:100%;} *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:var(--text);
+      background:linear-gradient(180deg,#000,#050505);
+      -webkit-font-smoothing:antialiased;
+      overflow:hidden;
+    }
+
+    /* ===== TOP LOADER ===== */
+    .nn-pre{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      display:grid;
+      grid-template-rows:2px 1fr;
+      pointer-events:none;
+      align-items:start;
+      gap:0;
+      transition:opacity .28s ease, visibility .28s ease;
+      opacity:0;
+      visibility:hidden;
+    }
+    .nn-pre.is-visible{ opacity:1; visibility:visible; pointer-events:auto; }
+    .nn-pre__bar{
+      height:2px;
+      background:rgba(255,255,255,0.04);
+      overflow:hidden;
+      position:relative;
+    }
+    .nn-pre__bar > i{
+      position:absolute;
+      inset:0 auto 0 0;
+      width:30%;
+      background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.28) 55%, rgba(255,255,255,0.08));
+      transform: translateX(-40%);
+      animation: prebar-move 1400ms linear infinite;
+    }
+    @keyframes prebar-move {
+      0% { transform: translateX(-40%); }
+      100% { transform: translateX(140%); }
+    }
+    .nn-pre__center{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      padding:12px;
+      pointer-events:auto;
+    }
+    .nn-pre__sub{
+      color:var(--muted);
+      font-size:13px;
+      letter-spacing:0.2px;
+    }
+
+    /* big center loader (three pulsing dots) */
+    .nn-pre__spinner{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 8px;
+      border-radius:999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border: 1px solid rgba(255,255,255,0.02);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    }
+    .nn-pre__spinner span{
+      display:inline-block;
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background: rgba(255,255,255,0.86);
+      opacity:0.12;
+      transform: translateY(0);
+      animation: dot-bounce 900ms cubic-bezier(.22,.9,.45,1) infinite;
+    }
+    .nn-pre__spinner span:nth-child(1){ animation-delay: 0ms; }
+    .nn-pre__spinner span:nth-child(2){ animation-delay: 120ms; }
+    .nn-pre__spinner span:nth-child(3){ animation-delay: 240ms; }
+
+    @keyframes dot-bounce {
+      0% { transform: translateY(0); opacity:0.12; filter: blur(0.2px); }
+      35% { transform: translateY(-6px); opacity:0.9; filter: blur(0); }
+      100% { transform: translateY(0); opacity:0.12; filter: blur(0.2px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nn-pre__bar > i { animation: none; width: 100%; opacity: 0.08; }
+      .nn-pre__spinner span { animation: none; opacity: .28; transform: none; }
+    }
+
+    /* ===== HEADER MINI LOADER ===== - styles kept if you want to re-enable later */
+    .mini-loader{ display:inline-flex; align-items:center; gap:8px; }
+    .mini-dots{ display:inline-flex; gap:6px; align-items:center; }
+    .mini-dots b{
+      display:inline-block;
+      width:6px; height:6px; border-radius:50%;
+      background: rgba(255,255,255,0.9);
+      opacity:0.12;
+      transform: translateY(0);
+      animation: mini-dot 700ms cubic-bezier(.22,.9,.45,1) infinite;
+    }
+    .mini-dots b:nth-child(1){ animation-delay: 0ms; }
+    .mini-dots b:nth-child(2){ animation-delay: 100ms; }
+    .mini-dots b:nth-child(3){ animation-delay: 200ms; }
+
+    @keyframes mini-dot {
+      0% { transform: translateY(0); opacity:0.12; }
+      40% { transform: translateY(-4px); opacity:0.9; }
+      100% { transform: translateY(0); opacity:0.12; }
+    }
+
+    /* visually-hidden (for accessibility labels) */
+    .sr{ position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
+
+    /* ===== APP UI ===== */
+    .app{width:100vw;height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:14px;gap:12px;align-items:stretch}
+
+    header,footer{display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44px;border-radius:10px;overflow:hidden;display:grid;place-items:center}
+    .logo img{width:100%;height:100%;object-fit:cover}
+    .lockup{display:flex;flex-direction:column}
+    .name{font-weight:800;color:var(--white)}
+    .tag{color:var(--muted);font-size:12px}
+
+    .workspace{flex:1;display:grid;grid-template-columns:360px 1fr 360px;gap:14px;align-items:start}
+    @media (max-width:980px){ .workspace{grid-template-columns:1fr;grid-auto-rows:min-content} }
+
+    .panel{
+      background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.02));
+      border:1px solid var(--ring);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+      will-change: transform, opacity;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    }
+
+    .panel.anim-in{
+      opacity: 0;
+      transform: scale(0.998) translateY(2px);
+      animation: panelIn var(--dur) var(--ease) forwards;
+    }
+    @keyframes panelIn {
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .inner{overflow:auto;-webkit-overflow-scrolling:touch;padding-right:6px}
+    .panel .inner::-webkit-scrollbar{width:0;height:0}
+
+    .drop{
+      border:1px dashed var(--ring);
+      border-radius:10px;
+      padding:12px;
+      display:grid;
+      gap:8px;
+      align-items:center;
+      justify-items:center;
+      text-align:center;
+      cursor:pointer;
+      transition: transform var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    }
+    .drop:hover{ transform: translateY(-2px); }
+    .drop.drag-over{ border-color: var(--white); background: rgba(255,255,255,0.03) }
+
+    .btn{
+      appearance:none;
+      background:transparent;
+      color:var(--text);
+      border:1px solid var(--ring);
+      padding:10px 12px;
+      border-radius:8px;
+      font-weight:700;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform 130ms var(--ease), background 130ms var(--ease), box-shadow 130ms var(--ease);
+    }
+
+    .btn.primary{
+      background: var(--white);
+      color: var(--black);
+      border-color: var(--black);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    }
+    .btn.primary:hover{ transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.48) }
+    .btn.primary:active{ transform: translateY(0) scale(.998) }
+
+    .btn:not(.primary):hover{ transform: translateY(-1.5px) }
+    .btn:active{ transform: translateY(0) scale(.998) }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none }
+
+    .btn.home {
+      position: relative;
+      transition: box-shadow 360ms var(--ease), transform 130ms var(--ease);
+      box-shadow: 0 0 8px rgba(255,255,255,0.04);
+      animation: homeGlow 2100ms infinite ease-in-out;
+    }
+    @keyframes homeGlow {
+      0% { box-shadow: 0 0 6px rgba(255,255,255,0.03); transform: translateY(0); }
+      50% { box-shadow: 0 0 18px rgba(255,255,255,0.06); transform: translateY(-1px); }
+      100% { box-shadow: 0 0 6px rgba(255,255,255,0.03); transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .btn.home { animation: none; box-shadow: 0 0 6px rgba(255,255,255,0.03); }
+      .nn-pre__bar > i { animation: none; width:100%; opacity:0.08; }
+    }
+
+    .muted{color:var(--muted);font-size:13px}
+    input,textarea,select{
+      background:transparent;border:1px solid var(--ring);color:var(--text);padding:10px;border-radius:8px;width:100%;
+      transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--white);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.03);
+    }
+
+    .file-list{display:flex;flex-direction:column;gap:8px;max-height:300px}
+    .file-item{
+      display:flex;gap:10px;align-items:center;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      transition: transform 120ms var(--ease), background 160ms var(--ease);
+    }
+    .file-item:hover{ transform: translateY(-2px); background: rgba(255,255,255,0.02) }
+
+    .file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .output-list{display:flex;flex-direction:column;gap:8px;max-height:380px}
+    .center-screen{display:grid;place-items:center;gap:12px}
+    .big{font-weight:800;font-size:20px}
+    .small{font-size:13px;color:var(--muted)}
+
+    @media (max-width:980px){
+      .workspace{grid-template-columns:1fr}
+      .panel{min-height:120px}
+      .screen-hidden{display:none}
+      .screen-active{display:block}
+    }
+
+    .row{display:flex;gap:8px;align-items:center}
+    .kbd{padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);font-size:12px}
+
+    .toast{
+      position:fixed;left:50%;transform:translateX(-50%) translateY(120px);bottom:18px;
+      background:var(--card);border:1px solid var(--ring);padding:10px 14px;border-radius:10px;
+      opacity:0;transition:all 200ms var(--ease);z-index:999;box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+    .progress{height:4px;background:var(--ring);border-radius:2px;overflow:hidden}
+    .progress-bar{height:100%;background:var(--white);width:0%;transition:width 240ms var(--ease)}
+  </style>
+</head>
+<body>
+  
+  <!-- Top loader (hidden by default) -->
+  <div id="nn-pre" class="nn-pre" aria-hidden="true" role="status" aria-live="polite">
+    <div class="nn-pre__bar"><i></i></div>
+    <div class="nn-pre__center">
+      <div class="nn-pre__spinner" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="nn-pre__sub" id="nn-sub">No-Nonsense</div>
+    </div>
+  </div>
+
+  <div class="app" role="application" aria-label="No-Nonsense PDF app">
+    <header>
+      <div class="brand">
+        <div class="logo"><img src="logo.jpg" alt="logo"></div>
+        <div class="lockup"><div class="name">NNpdf</div><div class="tag">Merge • Extract • Reorder • Split</div></div>
+      </div>
+      <div class="row">
+        <!-- deviceState removed to eliminate empty card next to Home -->
+        <a id="homeBtn" class="btn home" style="text-decoration:none;color:var(--muted);" href="./index.html" title="Back to Home">Home</a>
+      </div>
+    </header>
+
+    <main class="workspace" id="workspace" aria-live="polite">
+      <section id="filesPanel" class="panel anim-in" aria-label="Files panel">
+        <div class="row" style="justify-content:space-between;align-items:center"><div class="muted">Files</div><div class="muted">Select / remove</div></div>
+        <div class="inner" style="display:flex;flex-direction:column;gap:12px">
+          <div id="dropArea" class="drop" role="button" tabindex="0" aria-label="Upload PDFs (drop or choose)">
+            <div class="small">Drag & drop or</div>
+            <div class="row">
+              <input id="fileInput" type="file" accept="application/pdf" multiple style="display:none">
+              <button id="pickBtn" class="btn primary">Choose files</button>
+            </div>
+            <div class="small muted">Tap files, then select action</div>
+          </div>
+
+          <div id="fileList" class="file-list" aria-live="polite"></div>
+
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <div class="muted">After adding files → go to Actions</div>
+            <div>
+              <button id="toActionsBtn" class="btn" disabled>Go to Actions</button>
+              <button id="clearFilesBtn" class="btn" style="display:none">Clear</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="actionsPanel" class="panel" aria-label="Actions panel">
+        <div class="row" style="justify-content:space-between;align-items:center"><div class="muted">Actions</div><div class="muted">Choose one</div></div>
+        <div class="inner center-screen" style="padding:18px">
+          <div class="center-stack" style="width:100%">
+            <div class="big">What do you want to do?</div>
+            <div class="small muted">Pick one action — the app will process and auto-download the output.</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;max-width:520px;margin-left:auto;margin-right:auto">
+              <button id="actMerge" class="btn primary">Merge</button>
+              <button id="actExtract" class="btn">Extract</button>
+              <button id="actReorder" class="btn">Reorder</button>
+              <button id="actSplit" class="btn">Split equally</button>
+            </div>
+
+            <div id="params" style="margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto">
+              <label class="muted">Ranges / Order</label>
+              <input id="ranges" placeholder="e.g. 1-3,5 or 3,1,2" />
+              <div style="height:8px"></div>
+              <label class="muted">Split into parts</label>
+              <input id="parts" type="number" min="2" max="100" placeholder="e.g. 3" />
+            </div>
+
+            <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+              <button id="startProcessBtn" class="btn primary" disabled>Start</button>
+              <button id="backToFilesBtn" class="btn">Back</button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="outputsPanel" class="panel" aria-label="Outputs panel">
+        <div class="row" style="justify-content:space-between;align-items:center"><div class="muted">Outputs</div><div><button id="clearOutputsBtn" class="btn">Clear</button></div></div>
+        <div id="outputsList" class="output-list inner" aria-live="polite"></div>
+        <div class="muted small" style="margin-top:8px">Files are downloaded automatically after processing. You can also open them.</div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="muted">© <span id="y">2025</span> No-Nonsense</div>
+      <div class="muted">Open source • MIT</div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- pdf-lib -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script>
+    // Elements
+    const pre = document.getElementById('nn-pre');
+    const preSub = document.getElementById('nn-sub');
+    const fileInput = document.getElementById('fileInput');
+    const pickBtn = document.getElementById('pickBtn');
+    const dropArea = document.getElementById('dropArea');
+    const fileListEl = document.getElementById('fileList');
+    const toActionsBtn = document.getElementById('toActionsBtn');
+    const clearFilesBtn = document.getElementById('clearFilesBtn');
+    const actMerge = document.getElementById('actMerge');
+    const actExtract = document.getElementById('actExtract');
+    const actReorder = document.getElementById('actReorder');
+    const actSplit = document.getElementById('actSplit');
+    const startProcessBtn = document.getElementById('startProcessBtn');
+    const backToFilesBtn = document.getElementById('backToFilesBtn');
+    const rangesInput = document.getElementById('ranges');
+    const partsInput = document.getElementById('parts');
+    const outputsList = document.getElementById('outputsList');
+    const clearOutputsBtn = document.getElementById('clearOutputsBtn');
+    // deviceState element removed — defensive queries below
+    const deviceState = document.getElementById('deviceState'); // will be null
+    const miniLoader = deviceState ? deviceState.querySelector('.mini-loader') : null;
+    const deviceStateMsg = document.getElementById('deviceStateMsg'); // will be null
+
+    // Panels
+    const filesPanel = document.getElementById('filesPanel');
+    const actionsPanel = document.getElementById('actionsPanel');
+    const outputsPanel = document.getElementById('outputsPanel');
+
+    // State
+    let files = [];
+    let pickerLock = false;
+    let currentAction = null;
+    let isProcessing = false;
+
+    // PDF helpers
+    const { PDFDocument } = PDFLib;
+
+    // show/hide top overlay loader and update subtext
+    function showLoader(text){
+      if (!pre) return;
+      preSub.textContent = text || 'No-Nonsense';
+      pre.classList.add('is-visible');
+      pre.setAttribute('aria-hidden', 'false');
+    }
+    function hideLoader(){
+      if (!pre) return;
+      pre.classList.remove('is-visible');
+      pre.setAttribute('aria-hidden', 'true');
+    }
+
+    // DEVICE STATE: header mini loader (defensive — safe if element removed)
+    function setDeviceState(s){
+      const text = (s || '').toString();
+      const isLoading = text && text.toLowerCase() !== 'ready';
+      if (isLoading){
+        if (miniLoader) miniLoader.style.display = 'inline-flex';
+        if (deviceStateMsg) deviceStateMsg.textContent = text;
+        showLoader(text);
+      } else {
+        if (miniLoader) miniLoader.style.display = 'none';
+        if (deviceStateMsg) deviceStateMsg.textContent = '';
+        hideLoader();
+      }
+    }
+
+    // UX helpers
+    function showToast(msg, timeout=2000){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'), timeout);
+    }
+
+    function animIn(el){
+      if(!el) return;
+      el.classList.remove('anim-in');
+      void el.offsetWidth;
+      el.classList.add('anim-in');
+      setTimeout(()=>el.classList.remove('anim-in'), 300);
+    }
+
+    function goTo(panel){
+      if (window.innerWidth <= 980){
+        filesPanel.classList.add('screen-hidden');
+        actionsPanel.classList.add('screen-hidden');
+        outputsPanel.classList.add('screen-hidden');
+        if (panel === 'files') { filesPanel.classList.remove('screen-hidden'); animIn(filesPanel); }
+        if (panel === 'actions') { actionsPanel.classList.remove('screen-hidden'); animIn(actionsPanel); }
+        if (panel === 'outputs') { outputsPanel.classList.remove('screen-hidden'); animIn(outputsPanel); }
+      } else {
+        if (panel === 'actions') { actionsPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(actionsPanel); }
+        if (panel === 'files') { filesPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(filesPanel); }
+        if (panel === 'outputs') { outputsPanel.scrollIntoView({behavior:'smooth',block:'center'}); animIn(outputsPanel); }
+      }
+    }
+
+    function openPicker(){ 
+      if (pickerLock) return; 
+      pickerLock = true; 
+      try{ fileInput.value=''; }catch(e){} 
+      fileInput.click(); 
+      setTimeout(()=>pickerLock=false,800); 
+    }
+    pickBtn.addEventListener('click', e=>{ e.preventDefault(); openPicker(); });
+
+    ['dragenter','dragover','dragleave','drop'].forEach(ev=> dropArea.addEventListener(ev, e=>{
+      e.preventDefault(); e.stopPropagation();
+      if (ev==='dragenter' || ev==='dragover') dropArea.classList.add('drag-over'); else dropArea.classList.remove('drag-over');
+    }));
+    dropArea.addEventListener('drop', e=>{
+      const dt=e.dataTransfer;
+      const list=Array.from(dt.files||[]).filter(f=>f.type==='application/pdf');
+      if (list.length) handleFiles(list);
+    });
+    dropArea.addEventListener('click', ()=> openPicker());
+
+    fileInput.addEventListener('change', async e=>{
+      const sel=Array.from(e.target.files||[]);
+      if (!sel.length) return;
+      await handleFiles(sel);
+      try{ fileInput.value=''; }catch{}
+    });
+
+    async function handleFiles(selected){
+      if (isProcessing){ showToast('Wait for current operation'); return; }
+      const pdfs = selected.filter(f=>f.type==='application/pdf');
+      if (!pdfs.length){ showToast('No PDF files selected'); return; }
+      setDeviceState('Reading files...');
+      let read=0;
+      for (const f of pdfs){
+        try{ const ab = await f.arrayBuffer(); files.push({file:f,name:f.name,size:f.size,arrayBuffer:ab}); read++; } catch(err){ console.error('read failed',err); showToast('Failed to read '+f.name); }
+      }
+      renderFileList();
+      setDeviceState(''); // idle now
+      showToast(`${read} file(s) added`);
+      toActionsBtn.disabled = files.length === 0;
+      clearFilesBtn.style.display = files.length ? 'inline-flex' : 'none';
+      if (window.innerWidth <= 980) goTo('actions');
+    }
+
+    function renderFileList(){
+      fileListEl.innerHTML='';
+      if (!files.length){
+        fileListEl.innerHTML = '<div class="muted" style="text-align:center;padding:18px">No files</div>';
+        toActionsBtn.disabled=true;
+        clearFilesBtn.style.display='none';
+        startProcessBtn.disabled = true;
+        return;
+      }
+      files.forEach((f,i)=>{
+        const el = document.createElement('div');
+        el.className='file-item';
+        el.innerHTML = `<div style="width:52px;height:44px;display:grid;place-items:center;border-radius:8px;background:#0a0a0a"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="file-name"><div>${escapeHtml(f.name)}</div><div class="muted" style="font-size:12px">${human(f.size)}</div></div><div style="display:flex;gap:8px"><button class="btn" data-i="${i}">Remove</button></div>`;
+        fileListEl.appendChild(el);
+      });
+      Array.from(fileListEl.querySelectorAll('button')).forEach(b=>b.addEventListener('click', ()=>{
+        const i=Number(b.getAttribute('data-i'));
+        files.splice(i,1);
+        renderFileList();
+        showToast('Removed');
+      }));
+    }
+
+    function human(n){ if (n<1024) return n+' B'; if (n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
+    function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+    // Action selection
+    [actMerge, actExtract, actReorder, actSplit].forEach(btn=> btn.addEventListener('click', ()=>{
+      [actMerge, actExtract, actReorder, actSplit].forEach(b=>b.classList.remove('primary'));
+      btn.classList.add('primary');
+      currentAction = btn.id === 'actMerge' ? 'merge' : btn.id === 'actExtract' ? 'extract' : btn.id === 'actReorder' ? 'reorder' : 'split';
+      // Only enable Start if files exist
+      startProcessBtn.disabled = files.length === 0;
+      showToast((currentAction || '').toUpperCase());
+    }));
+
+    backToFilesBtn.addEventListener('click', ()=>{ goTo('files'); });
+    toActionsBtn.addEventListener('click', ()=> goTo('actions'));
+
+    async function processAndDownload(){
+      if (isProcessing) return;
+      if (!files.length) return showToast('Add files first');
+      if (!currentAction) return showToast('Pick an action');
+      isProcessing = true;
+      setDeviceState('Processing...');
+      const op = currentAction;
+      try{
+        // If user chose merge -> always merge all files and download merged.pdf
+        if (op === 'merge'){
+          const bytes = await mergeAll(files);
+          triggerDownload(bytes, 'merged.pdf');
+          showToast('Merged');
+          goTo('outputs');
+          return;
+        }
+
+        // For other operations we need a single PDF bytes buffer.
+        // If multiple files were provided, merge them in memory first (original behavior).
+        const srcBuffer = files.length === 1 ? files[0].arrayBuffer : await mergeAll(files);
+
+        if (op === 'extract'){
+          const ranges = rangesInput.value.trim(); if (!ranges) throw new Error('Enter ranges (e.g. 1-3,5)');
+          const out = await extractRanges(srcBuffer, ranges);
+          triggerDownload(out, 'extracted.pdf');
+        } else if (op === 'reorder'){
+          const order = rangesInput.value.trim(); if (!order) throw new Error('Enter order (e.g. 3,1,2)');
+          const out = await reorderPages(srcBuffer, order);
+          triggerDownload(out, 'reordered.pdf');
+        } else if (op === 'split'){
+          const p = Number(partsInput.value); if (!p || p<2) throw new Error('Enter parts >=2');
+          await splitAndDownload(srcBuffer, p);
+        }
+
+        showToast('Done');
+        goTo('outputs');
+      }catch(err){
+        console.error(err);
+        showToast('Error: '+(err && err.message ? err.message : 'Processing failed'));
+      }finally{
+        isProcessing=false;
+        setDeviceState(''); // back to idle
+      }
+    }
+
+    startProcessBtn.addEventListener('click', ()=>{ processAndDownload(); });
+
+    async function mergeAll(list){
+      if (!list.length) throw new Error('No files to merge');
+      const out = await PDFDocument.create();
+      for (const f of list){
+        const doc = await PDFDocument.load(f.arrayBuffer);
+        const pages = await out.copyPages(doc, doc.getPageIndices());
+        pages.forEach(p=>out.addPage(p));
+      }
+      return await out.save(); // Uint8Array
+    }
+
+    function parseRanges(input){
+      if (!input || !input.trim()) return [];
+      const parts = input.split(',').map(s=>s.trim()).filter(Boolean);
+      const out=[];
+      for (const p of parts){
+        if (p.includes('-')){
+          const [a,b]=p.split('-').map(x=>Number(x.trim()));
+          if (!Number.isNaN(a)&&!Number.isNaN(b)&&a<=b) out.push([a,b]);
+          else throw new Error('Invalid range: '+p);
+        } else {
+          const n=Number(p);
+          if (!Number.isNaN(n)) out.push([n,n]);
+          else throw new Error('Invalid number: '+p);
+        }
+      }
+      return out;
+    }
+
+    async function extractRanges(buffer, rangesStr){
+      const ranges = parseRanges(rangesStr);
+      const src = await PDFDocument.load(buffer);
+      const out = await PDFDocument.create();
+      const total = src.getPageCount();
+      const idxs=[];
+      ranges.forEach(r=>{
+        for (let p=r[0];p<=r[1];p++) if (p>=1&&p<=total) idxs.push(p-1);
+      });
+      if (!idxs.length) throw new Error('No pages matched the ranges');
+      const copied = await out.copyPages(src, idxs);
+      copied.forEach(p=>out.addPage(p));
+      return await out.save();
+    }
+
+    async function reorderPages(buffer, orderStr){
+      const order = orderStr.split(',').map(s=>Number(s.trim())).filter(n=>!Number.isNaN(n));
+      if (!order.length) throw new Error('Invalid order');
+      const src = await PDFDocument.load(buffer);
+      const total = src.getPageCount();
+      const out = await PDFDocument.create();
+      const idxs=[];
+      order.forEach(n=>{ if (n>=1 && n<=total) idxs.push(n-1); });
+      // add remaining pages that were not included in order
+      for (let i=0;i<total;i++) if (!idxs.includes(i)) idxs.push(i);
+      const copied = await out.copyPages(src, idxs);
+      copied.forEach(p=>out.addPage(p));
+      return await out.save();
+    }
+
+    async function splitAndDownload(buffer, parts){
+      const src = await PDFDocument.load(buffer);
+      const total = src.getPageCount();
+      if (total === 0) throw new Error('No pages to split');
+      const per = Math.ceil(total/parts);
+      let part=1;
+      for (let i=0;i<total;i+=per){
+        const out = await PDFDocument.create();
+        const end = Math.min(i+per, total);
+        const idxs=[];
+        for (let j=i;j<end;j++) idxs.push(j);
+        const copied = await out.copyPages(src, idxs);
+        copied.forEach(pg=>out.addPage(pg));
+        const bytes = await out.save();
+        triggerDownload(bytes, `part-${part}.pdf`);
+        part++;
+      }
+    }
+
+    function triggerDownload(bytes, filename){
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 60000);
+      const row = document.createElement('div');
+      row.className = 'file-item';
+      row.innerHTML = `<div style="width:46px;height:44px;display:grid;place-items:center;border-radius:8px;background:#0a0a0a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div style="flex:1;padding-left:8px">${escapeHtml(filename)}</div><div class="muted">Downloaded</div><div><a class="btn" href="${url}" target="_blank">Open</a></div>`;
+      outputsList.prepend(row);
+    }
+
+    clearFilesBtn.addEventListener('click', ()=>{ files=[]; renderFileList(); showToast('Files cleared'); toActionsBtn.disabled=true; });
+    clearOutputsBtn.addEventListener('click', ()=>{ outputsList.innerHTML=''; showToast('Outputs cleared'); });
+
+    // initial state -> idle (no "Ready" text)
+    renderFileList();
+    setDeviceState(''); // hide header loader and top overlay
+    if (window.innerWidth <= 980){ goTo('files'); }
+
+    // prevent double-picker on touch
+    let lastTap = 0;
+    dropArea.addEventListener('touchstart', (e)=>{ const now=Date.now(); if (now - lastTap < 350) e.preventDefault(); lastTap = now; });
+
+    // animate panels on resize
+    let resizeTimer = null;
+    window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer = setTimeout(()=>{ if (window.innerWidth <= 980){ goTo('files'); } }, 200); });
+
+    // hide loader if still visible when window loads
+    window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.remove('is-visible'); pre.setAttribute('aria-hidden','true'); } }, 300); });
+  </script>
+</body>
+</html>
+
