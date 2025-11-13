@@ -342,7 +342,58 @@
   display: none;
 }
 
-    
+@property --glow-strength {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.glow-btn {
+  --glow-color: rgb(255 255 255 / .70);
+  --glow-base: 2px;
+  --glow-radius: 10px;
+  --glow-spread: 2px;
+  --glow-strength: 0;
+
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .6rem 1.1rem;
+  border-radius: .65rem;
+  background: transparent;
+  color: rgb(255 255 255 / .85);
+  border: 1.5px solid rgb(255 255 255 / .25);
+  outline: var(--glow-base) solid rgb(255 255 255 / .25);
+  box-shadow:
+    0 0 calc(var(--glow-radius) + 8px * var(--glow-strength))
+    calc(var(--glow-spread) + 2px * var(--glow-strength))
+    color-mix(in oklab, var(--glow-color) 100%, transparent);
+  animation: glow-pulse 2.2s ease-in-out infinite;
+  cursor: pointer;
+  transition: 
+    color .25s ease, 
+    background-color .25s ease, 
+    filter .25s ease;
+}
+
+.glow-btn:hover {
+  background: rgb(255 255 255 / .85);
+  color: black;
+  filter: drop-shadow(0 0 6px var(--glow-color)) drop-shadow(0 0 12px var(--glow-color));
+}
+
+.glow-btn:focus-visible {
+  --glow-strength: 1;
+  outline-color: rgb(255 255 255 / .6);
+}
+
+@keyframes glow-pulse {
+  0%, 100% { --glow-strength: .15; }
+  50%      { --glow-strength: 1; }
+}
+}
+
+
   </style>
 </head>
 <body>
@@ -374,8 +425,10 @@
       </div>
       <div class="row">
         <!-- deviceState removed to eliminate empty card next to Home -->
-        <a id="homeBtn" class="btn home" style="text-decoration:none;" href="./index.html" title="Back to Home">Home</a>
-      </div>
+        <div class="row">
+          <a class="donate glow-btn" style="text-decoration: none; font-weight:600 ;" href="./index.html" title="Return to Home">Home</a>
+        </div>
+        </div>
     </header>
 
     <main class="workspace" id="workspace" aria-live="polite">
@@ -852,6 +905,15 @@ window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 
