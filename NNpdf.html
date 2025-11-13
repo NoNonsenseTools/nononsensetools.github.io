@@ -289,10 +289,72 @@
     .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
     .progress{height:4px;background:var(--ring);border-radius:2px;overflow:hidden}
     .progress-bar{height:100%;background:var(--white);width:0%;transition:width 240ms var(--ease)}
+
+    /* NoNonsense Loader CSS */
+#nn-loader {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  transition: opacity .5s ease;
+}
+
+.nn-loader-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.nn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  animation: nn-blink 1s infinite ease-in-out;
+}
+
+@keyframes nn-blink {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#nn-loader.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#nn-loader-status {
+  font-family: ui-monospace;
+  font-size: 14px;
+}
+
+#nn-slow-hint {
+  font-size: 12px;
+  opacity: .75;
+  margin-top: 6px;
+  display: none;
+}
+
+    
   </style>
 </head>
 <body>
-  
+  <!-- NoNonsense Loader HTML -->
+<div id="nn-loader" aria-live="polite">
+  <div class="nn-loader-box">
+    <div class="nn-dot"></div>
+    <div id="nn-loader-status">on the verge</div>
+    <div id="nn-slow-hint">your internet might be slow :(</div>
+  </div>
+</div>
+
   <!-- Top loader (hidden by default) -->
   <div id="nn-pre" class="nn-pre" aria-hidden="true" role="status" aria-live="polite">
     <div class="nn-pre__bar"><i></i></div>
@@ -386,6 +448,46 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+
+  // NoNonsense Loader JS — Updated Texts
+(function () {
+  const statuses = ['on the verge', 'ready'];
+  const statusEl = document.getElementById('nn-loader-status');
+  const slowEl = document.getElementById('nn-slow-hint');
+  const loader = document.getElementById('nn-loader');
+
+  let idx = 0, cycling = true;
+
+  // Rotate loading messages
+  function cycle() {
+    if (!cycling) return;
+    statusEl.textContent = statuses[idx % statuses.length];
+    idx++;
+    setTimeout(cycle, 800);
+  }
+  cycle();
+
+  // Show slow warning after 500ms
+  const slowTimer = setTimeout(() => {
+    if (cycling) slowEl.style.display = "block";
+  }, 500);
+
+  // When page fully loads
+  window.addEventListener('load', () => {
+    clearTimeout(slowTimer);
+    cycling = false;
+    statusEl.textContent = "ready";
+
+    setTimeout(() => {
+      loader.classList.add("hide");
+      setTimeout(() => loader.remove(), 600);
+    }, 500);
+  });
+})();
+  </script>
+
 
   <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
@@ -750,6 +852,7 @@ window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.
 </script>
 </body>
 </html>
+
 
 
 
