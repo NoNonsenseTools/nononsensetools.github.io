@@ -6,23 +6,62 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NoNonsense — Under Construction</title>
   <style>
-  body{margin:0;background:#000;color:#fff;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center}
+  html,body{height:100%;}
+  body{margin:0;background:#000;color:#fff;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;overflow:hidden}
   .logo{width:110px;height:110px;object-fit:contain;filter:grayscale(1)}
-  h1{font-size:20px;margin:18px 0 6px;font-weight:600}
-  .sub{opacity:.7;font-size:13px;margin-bottom:30px}
-  /* ultra-minimal loader: a fading dot */
-  .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out}
-  @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
-  #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease}
-  #loader.hide{opacity:0;pointer-events:none}
-</style>
+  h1{font-size:18px;margin:14px 0 6px;font-weight:600}
+  .sub{opacity:.75;font-size:13px;margin-bottom:18px}/* ultra-minimal loader: a fading dot */ .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out} @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}} #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease} #loader.hide{opacity:0;pointer-events:none}
+
+/* Typewriter */ .typewrap{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;letter-spacing:0.6px;font-size:14px} .type{display:inline-block;min-width:160px} .caret{display:inline-block;margin-left:6px;width:10px;height:18px;vertical-align:bottom;background:transparent;border-left:2px solid #fff;animation:blinkcaret 900ms steps(1) infinite} @keyframes blinkcaret{50%{opacity:0}}
+
+/* ensure no scrollbars appear */ ::-webkit-scrollbar{display:none} </style>
+
 </head>
 <body>
   <div id="loader"><div class="dot"></div></div>  <img src="logo.jpg" class="logo" alt="logo">
   <h1>Under Construction</h1>
-  <div class="sub">NoNonsense</div>  <script>
+  <div class="sub">NoNonsense</div>  <div class="typewrap" aria-live="polite"><span>Cooking a - </span><span class="type" id="type"></span><span> - Experience</span><span class="caret" aria-hidden="true"></span></div>  <script>
+    // loader hides when page fully loaded
     window.addEventListener('load',()=>{
-      document.getElementById('loader').classList.add('hide');
+      const loader = document.getElementById('loader');
+      loader.classList.add('hide');
+      setTimeout(()=>loader.remove(),700);
     });
+
+    // typewriter that cycles through words
+    (function(){
+      const words = ['Private','Open Source','Safe','Free'];
+      const el = document.getElementById('type');
+      const TYPING_SPEED = 90; // ms per char
+      const DELETING_SPEED = 40;
+      const PAUSE_AFTER = 900; // ms after word typed
+      let w = 0, i = 0, deleting = false;
+
+      function tick(){
+        const current = words[w];
+        if(!deleting){
+          el.textContent = current.slice(0, i+1);
+          i++;
+          if(i === current.length){
+            deleting = true;
+            setTimeout(tick, PAUSE_AFTER);
+            return;
+          }
+          setTimeout(tick, TYPING_SPEED);
+        } else {
+          el.textContent = current.slice(0, i-1);
+          i--;
+          if(i === 0){
+            deleting = false;
+            w = (w+1) % words.length;
+            setTimeout(tick, 200);
+            return;
+          }
+          setTimeout(tick, DELETING_SPEED);
+        }
+      }
+      // start after small delay so logo registers
+      setTimeout(tick, 600);
+    })();
   </script></body>
 </html>
