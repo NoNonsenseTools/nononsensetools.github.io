@@ -722,10 +722,12 @@ function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; 
   showToast((currentAction || '').toUpperCase());
 }));
 // ==== Action selection + param visibility ====
-// find the label elements next to the inputs (no HTML change required)
+
+// get label elements
 const rangesLabel = rangesInput ? rangesInput.previousElementSibling : null;
 const partsLabel = partsInput ? partsInput.previousElementSibling : null;
 
+// control visibility
 function setParamsVisibility(showRanges, showParts){
   if (rangesLabel) rangesLabel.style.display = showRanges ? '' : 'none';
   if (rangesInput) rangesInput.style.display = showRanges ? '' : 'none';
@@ -733,31 +735,39 @@ function setParamsVisibility(showRanges, showParts){
   if (partsInput) partsInput.style.display = showParts ? '' : 'none';
 }
 
-// hide both by default (until user picks an action)
+// hide everything initially
 setParamsVisibility(false, false);
 
-// attach listeners for the action buttons
-[actMerge, actExtract, actReorder, actSplit].forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    // visual active state
-    [actMerge, actExtract, actReorder, actSplit].forEach(b=>b.classList.remove('primary'));
+// action button handlers
+[actMerge, actExtract, actReorder, actSplit].forEach(btn => {
+  btn.addEventListener('click', () => {
+
+    // active button UI
+    [actMerge, actExtract, actReorder, actSplit].forEach(b => b.classList.remove('primary'));
     btn.classList.add('primary');
 
-    // set current action string used by your process function
-    currentAction = btn.id === 'actMerge' ? 'merge' :
-                    btn.id === 'actExtract' ? 'extract' :
-                    btn.id === 'actReorder' ? 'reorder' : 'split';
+    // set action
+    currentAction =
+      btn.id === 'actMerge' ? 'merge' :
+      btn.id === 'actExtract' ? 'extract' :
+      btn.id === 'actReorder' ? 'reorder' :
+      'split';
 
-    // show appropriate params:
-    // - split -> show parts only
-    // - any other -> show ranges (per your request)
-    if (currentAction === 'split') {
-      setParamsVisibility(false, true);
-    } else {
+    // visibility rules
+    if (currentAction === 'merge') {
+      // MERGE → hide everything
+      setParamsVisibility(false, false);
+    } 
+    else if (currentAction === 'extract' || currentAction === 'reorder') {
+      // EXTRACT + REORDER → show ranges only
       setParamsVisibility(true, false);
+    } 
+    else if (currentAction === 'split') {
+      // SPLIT → show parts only
+      setParamsVisibility(false, true);
     }
 
-    // enable Start when files present
+    // enable start if files exist
     startProcessBtn.disabled = files.length === 0;
 
     showToast((currentAction || '').toUpperCase());
@@ -946,6 +956,7 @@ window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.
 </script>
 </body>
 </html>
+
 
 
 
