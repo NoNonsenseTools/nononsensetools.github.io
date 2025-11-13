@@ -1,40 +1,131 @@
 <!doctype html>
-
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NoNonsense — Under Construction</title>
   <style>
-  html,body{height:100%;}
-  body{margin:0;background:#000;color:#fff;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;overflow:hidden}
-  .logo{width:110px;height:110px;object-fit:contain;filter:grayscale(1)}
-  h1{font-size:18px;margin:14px 0 6px;font-weight:600}
-  .sub{opacity:.75;font-size:13px;margin-bottom:18px}/* ultra-minimal loader: a fading dot */ .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out} @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}} #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease} #loader.hide{opacity:0;pointer-events:none}
+    html,body{height:100%;}
+    body{
+      margin:0;background:#000;color:#fff;
+      font-family:Inter,system-ui,sans-serif;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      height:100vh;text-align:center;overflow:hidden;
+    }
+    .logo{width:110px;height:110px;object-fit:contain;filter:grayscale(1)}
+    h1{font-size:18px;margin:14px 0 6px;font-weight:600}
+    .sub{opacity:.75;font-size:13px;margin-bottom:18px}
 
-/* Typewriter */ .typewrap{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;letter-spacing:0.6px;font-size:14px} .type{display:inline-block;min-width:160px} @keyframes blinkcaret{50%{opacity:0}}
+    /* ultra-minimal loader: a fading dot */
+    .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out}
+    @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+    #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease}
+    #loader.hide{opacity:0;pointer-events:none}
 
-/* ensure no scrollbars appear */ ::-webkit-scrollbar{display:none} </style>
-
+    /* Typewriter */
+    .typewrap{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;letter-spacing:0.6px;font-size:14px}
+    .type{display:inline-block;min-width:160px}
+    /* hide scrollbars */
+    ::-webkit-scrollbar{display:none}
+  </style>
 </head>
 <body>
-  <div id="loader"><div class="dot"></div></div>  <img src="logo.jpg" class="logo" alt="logo">
-  <h1>Under Construction</h1>
-  <div class="sub">NoNonsense</div>  <div class="typewrap" aria-live="polite"><span class="type" id="type"></span></div>  <script>
-    // loader hides when page fully loaded
-    window.addEventListener('load',()=>{
-      const loader = document.getElementById('loader');
-      // ensure loader stays visible at least 500ms
-      setTimeout(()=>{
-        loader.classList.add('hide');
-        setTimeout(()=>loader.remove(),700);
-      }, 500);
-    });(),700);
-    });
+  <!-- loader overlay -->
+  <div id="loader" aria-live="polite">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div class="dot" aria-hidden="true"></div>
+      <div id="loaderStatus" style="font-family:ui-monospace;font-size:14px">NoNonsense</div>
+      <div id="slowHint" style="font-size:12px;opacity:.75;margin-top:6px;display:none">Your internet might be slow</div>
+    </div>
+  </div>
 
-    // typewriter that cycles through words
+  <img src="logo.jpg" class="logo" alt="logo">
+  <h1>Under Construction</h1>
+  <div class="sub">NoNonsense</div>
+
+  <div class="typewrap" aria-live="polite"><span class="type" id="type"></span></div>
+
+  <script>
+    // Loader + slow hint + typewriter
     (function(){
+      // Typewriter words
       const words = ['Private','Open Source','Safe','Free'];
+      const typeEl = document.getElementById('type');
+      const TYPING_SPEED = 90;
+      const DELETING_SPEED = 40;
+      const PAUSE_AFTER = 900;
+      let w = 0, i = 0, deleting = false;
+
+      function tick(){
+        const current = words[w];
+        if (!deleting){
+          typeEl.textContent = current.slice(0, i+1);
+          i++;
+          if (i === current.length){
+            deleting = true;
+            setTimeout(tick, PAUSE_AFTER);
+            return;
+          }
+          setTimeout(tick, TYPING_SPEED);
+        } else {
+          typeEl.textContent = current.slice(0, i-1);
+          i--;
+          if (i === 0){
+            deleting = false;
+            w = (w + 1) % words.length;
+            setTimeout(tick, 200);
+            return;
+          }
+          setTimeout(tick, DELETING_SPEED);
+        }
+      }
+      // Start typewriter with a small delay
+      setTimeout(tick, 600);
+
+      // Loader behavior
+      const statuses = ['NoNonsense','Anytime Now'];
+      const statusEl = document.getElementById('loaderStatus');
+      const slowEl = document.getElementById('slowHint');
+      const loader = document.getElementById('loader');
+
+      let idx = 0, cycling = true;
+      function cycleStatus(){
+        if(!cycling) return;
+        statusEl.textContent = statuses[idx % statuses.length];
+        idx++;
+        setTimeout(cycleStatus, 800);
+      }
+      cycleStatus();
+
+      // Show slow hint if still loading after 500ms
+      const slowTimer = setTimeout(()=>{ if(cycling) slowEl.style.display = 'block'; }, 500);
+
+      // When page loads, stop cycling and hide loader (but ensure minimum 500ms shown)
+      window.addEventListener('load', () => {
+        clearTimeout(slowTimer);
+        cycling = false;
+        statusEl.textContent = 'Ready!';
+        // Keep loader visible at least 500ms then hide
+        setTimeout(() => {
+          loader.classList.add('hide');
+          setTimeout(()=>loader.remove(), 600);
+        }, 500);
+      });
+
+      // Allow click to dismiss if user wants
+      window.addEventListener('click', () => {
+        if(!loader.classList.contains('hide')){
+          cycling = false;
+          statusEl.textContent = 'Ready!';
+          loader.classList.add('hide');
+          setTimeout(()=>loader.remove(), 600);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>      const words = ['Private','Open Source','Safe','Free'];
       const el = document.getElementById('type');
       const TYPING_SPEED = 90; // ms per char
       const DELETING_SPEED = 40;
