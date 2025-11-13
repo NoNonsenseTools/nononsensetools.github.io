@@ -350,7 +350,7 @@
 <div id="nn-loader" aria-live="polite">
   <div class="nn-loader-box">
     <div class="nn-dot"></div>
-    <div id="nn-loader-status">on the verge</div>
+    <div id="nn-loader-status">on the verge!</div>
     <div id="nn-slow-hint">your internet might be slow :(</div>
   </div>
 </div>
@@ -453,7 +453,7 @@
 
   // NoNonsense Loader JS — Updated Texts
 (function () {
-  const statuses = ['on the verge', 'ready'];
+  const statuses = ['on the verge!', 'ready!'];
   const statusEl = document.getElementById('nn-loader-status');
   const slowEl = document.getElementById('nn-slow-hint');
   const loader = document.getElementById('nn-loader');
@@ -478,7 +478,7 @@
   window.addEventListener('load', () => {
     clearTimeout(slowTimer);
     cycling = false;
-    statusEl.textContent = "ready";
+    statusEl.textContent = "ready!";
 
     setTimeout(() => {
       loader.classList.add("hide");
@@ -852,6 +852,7 @@ window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.
 </script>
 </body>
 </html>
+
 
 
 
