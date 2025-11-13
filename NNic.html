@@ -125,38 +125,4 @@
     })();
   </script>
 </body>
-</html>      const words = ['Private','Open Source','Safe','Free'];
-      const el = document.getElementById('type');
-      const TYPING_SPEED = 90; // ms per char
-      const DELETING_SPEED = 40;
-      const PAUSE_AFTER = 900; // ms after word typed
-      let w = 0, i = 0, deleting = false;
-
-      function tick(){
-        const current = words[w];
-        if(!deleting){
-          el.textContent = current.slice(0, i+1);
-          i++;
-          if(i === current.length){
-            deleting = true;
-            setTimeout(tick, PAUSE_AFTER);
-            return;
-          }
-          setTimeout(tick, TYPING_SPEED);
-        } else {
-          el.textContent = current.slice(0, i-1);
-          i--;
-          if(i === 0){
-            deleting = false;
-            w = (w+1) % words.length;
-            setTimeout(tick, 200);
-            return;
-          }
-          setTimeout(tick, DELETING_SPEED);
-        }
-      }
-      // start after small delay so logo registers
-      setTimeout(tick, 600);
-    })();
-  </script></body>
-</html>
+</html>      
