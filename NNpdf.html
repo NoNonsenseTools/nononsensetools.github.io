@@ -721,7 +721,48 @@ function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; 
   startProcessBtn.disabled = files.length === 0;
   showToast((currentAction || '').toUpperCase());
 }));
+// ==== Action selection + param visibility ====
+// find the label elements next to the inputs (no HTML change required)
+const rangesLabel = rangesInput ? rangesInput.previousElementSibling : null;
+const partsLabel = partsInput ? partsInput.previousElementSibling : null;
 
+function setParamsVisibility(showRanges, showParts){
+  if (rangesLabel) rangesLabel.style.display = showRanges ? '' : 'none';
+  if (rangesInput) rangesInput.style.display = showRanges ? '' : 'none';
+  if (partsLabel) partsLabel.style.display = showParts ? '' : 'none';
+  if (partsInput) partsInput.style.display = showParts ? '' : 'none';
+}
+
+// hide both by default (until user picks an action)
+setParamsVisibility(false, false);
+
+// attach listeners for the action buttons
+[actMerge, actExtract, actReorder, actSplit].forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    // visual active state
+    [actMerge, actExtract, actReorder, actSplit].forEach(b=>b.classList.remove('primary'));
+    btn.classList.add('primary');
+
+    // set current action string used by your process function
+    currentAction = btn.id === 'actMerge' ? 'merge' :
+                    btn.id === 'actExtract' ? 'extract' :
+                    btn.id === 'actReorder' ? 'reorder' : 'split';
+
+    // show appropriate params:
+    // - split -> show parts only
+    // - any other -> show ranges (per your request)
+    if (currentAction === 'split') {
+      setParamsVisibility(false, true);
+    } else {
+      setParamsVisibility(true, false);
+    }
+
+    // enable Start when files present
+    startProcessBtn.disabled = files.length === 0;
+
+    showToast((currentAction || '').toUpperCase());
+  });
+});
 backToFilesBtn.addEventListener('click', ()=>{ goTo('files'); });
 toActionsBtn.addEventListener('click', ()=> goTo('actions'));
 
@@ -905,6 +946,7 @@ window.addEventListener('load', ()=>{ setTimeout(()=>{ if (pre) { pre.classList.
 </script>
 </body>
 </html>
+
 
 
 
