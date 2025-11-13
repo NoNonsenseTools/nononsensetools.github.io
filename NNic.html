@@ -6,200 +6,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NoNonsense — Under Construction</title>
   <style>
-    /* Pure black & white minimal styles */
-    :root{
-      --bg:#000;
-      --fg:#fff;
-      --muted: rgba(255,255,255,0.08);
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", "Helvetica Neue", monospace;
-    }
-    html,body{height:100%;}
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--fg);
-      font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }.container{
-  width:100%;
-  max-width:980px;
-  padding:48px 32px;
-  box-sizing:border-box;
-  display:grid;
-  grid-template-columns:1fr;
-  gap:28px;
-  align-items:center;
-  justify-items:center;
-  text-align:center;
-}
-
-.logo{
-  width:120px;
-  height:120px;
-  display:block;
-  object-fit:contain;
-  filter:grayscale(1) contrast(120%);
-}
-
-h1{
-  margin:0;
-  font-size: clamp(18px, 3.6vw, 28px);
-  letter-spacing:2px;
-  text-transform:uppercase;
-  font-weight:700;
-  font-family:var(--mono);
-}
-
-p.lead{
-  margin:8px 0 0 0;
-  color:var(--fg);
-  opacity:.9;
-  font-size:clamp(12px,2.6vw,16px);
-}
-
-.meta{
-  border:1px solid var(--muted);
-  padding:12px 18px;
-  border-radius:12px;
-  font-family:var(--mono);
-  font-size:13px;
-  opacity:.9;
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
-
-/* Minimal circular loader */
-.spinner{
-  width:32px;
-  height:32px;
-  border-radius:50%;
-  border:3px solid transparent;
-  border-top-color:var(--fg);
-  border-right-color:var(--fg);
-  animation:spin 1s linear infinite;
-  box-sizing:border-box;
-}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* loading text animations */
-.loading-line{
-  margin-top:12px;
-  height:22px;
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-
-.status-text{
-  font-family:var(--mono);
-  font-size:14px;
-  min-width:120px;
-  text-transform:none;
-}
-
-.fade-in-slow{opacity:0;transform:translateY(6px);animation:fadeIn 900ms ease-out forwards;animation-delay:900ms}
-@keyframes fadeIn{to{opacity:1;transform:none}}
-
-/* page reveal animation: overlay fades away revealing page */
-.reveal-overlay{
-  position:fixed;
-  inset:0;
-  background:var(--bg);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-  pointer-events:none;
-}
-.reveal-overlay.hidden{opacity:0;visibility:hidden;transition:opacity 600ms ease, visibility 1ms 600ms}
-
-/* subtle underline */
-.underline{
-  width:56px;height:2px;background:var(--fg);margin:18px auto 0;border-radius:2px;opacity:.08
-}
-
-footer{position:fixed;left:18px;bottom:14px;font-size:11px;opacity:.6;font-family:var(--mono)}
-
-/* Responsive tweaks */
-@media (min-width:760px){
-  .container{padding:64px}
-  .logo{width:150px;height:150px}
-}
-
-  </style>
+  body{margin:0;background:#000;color:#fff;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center}
+  .logo{width:110px;height:110px;object-fit:contain;filter:grayscale(1)}
+  h1{font-size:20px;margin:18px 0 6px;font-weight:600}
+  .sub{opacity:.7;font-size:13px;margin-bottom:30px}
+  /* ultra-minimal loader: a fading dot */
+  .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out}
+  @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+  #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease}
+  #loader.hide{opacity:0;pointer-events:none}
+</style>
 </head>
 <body>
-  <!--
-    Place a file named `logo.jpg` in the same folder as this HTML file.
-    The design is intentionally strictly black & white.
-  -->
-  <main class="container" aria-live="polite">
-    <img src="logo.jpg" alt="NoNonsense logo" class="logo" />
-    <h1>NoNonsense — Under Construction</h1>
-    <div class="underline" aria-hidden="true"></div><p class="lead fade-in-slow">We're building something simple, fast and privacy-first. Thanks for your patience.</p>
-
-<div class="meta fade-in-slow" style="animation-delay:1.1s">
-  <div class="spinner" aria-hidden="true"></div>
-  <div style="display:flex;flex-direction:column;align-items:flex-start;">
-    <div class="status-text" id="statusText">Almost there</div>
-    <div style="font-size:11px;opacity:.7">NoNonsense</div>
-  </div>
-</div>
-
-  </main>  <footer>© NoNonsense</footer>  <!-- overlay that will fade away once loader completes, creating a 'fade in the page' effect -->  <div id="overlay" class="reveal-overlay" aria-hidden="true">
-    <!-- keep this minimal: show the same spinner and text while loading -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
-      <div class="spinner" style="width:44px;height:44px;border-width:4px"></div>
-      <div style="font-family:var(--mono);letter-spacing:1.4px">Loading NoNonsense</div>
-    </div>
-  </div>  <script>
-    // Minimal JS: cycles the small status text from "Almost there" -> "Ready" with fades,
-    // then fades out the overlay to reveal the page fully.
-    (function(){
-      const status = document.getElementById('statusText');
-      const overlay = document.getElementById('overlay');
-      const states = ['Almost there', 'Almost there.', 'Almost there..', 'Almost there...', 'Ready'];
-      let i = 0;
-
-      function showNext(){
-        status.style.opacity = 0;
-        setTimeout(()=>{
-          status.textContent = states[i];
-          status.style.transition = 'opacity 240ms ease';
-          status.style.opacity = 1;
-          i++;
-          if(i < states.length){
-            // speed up slightly as it progresses
-            setTimeout(showNext, 700 + (i*60));
-          } else {
-            // final state reached -> reveal page
-            setTimeout(revealPage, 650);
-          }
-        }, 240);
-      }
-
-      function revealPage(){
-        // Add a short transition and then hide overlay (so page 'fades in')
-        overlay.style.transition = 'opacity 600ms ease, visibility 1ms linear 600ms';
-        overlay.style.opacity = '0';
-        // after transition, hide from DOM flow for accessibility
-        setTimeout(()=>{
-          overlay.classList.add('hidden');
-          overlay.setAttribute('aria-hidden','true');
-        }, 700);
-      }
-
-      // start the loading text cycle after a short delay so user sees page snapshot
-      setTimeout(showNext, 600);
-
-      // safety: if user clicks or presses Esc, remove overlay
-      window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') revealPage(); });
-      window.addEventListener('click', ()=>{ if(!overlay.classList.contains('hidden')) revealPage(); });
-    })();
+  <div id="loader"><div class="dot"></div></div>  <img src="logo.jpg" class="logo" alt="logo">
+  <h1>Under Construction</h1>
+  <div class="sub">NoNonsense</div>  <script>
+    window.addEventListener('load',()=>{
+      document.getElementById('loader').classList.add('hide');
+    });
   </script></body>
 </html>
