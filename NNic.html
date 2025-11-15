@@ -2,127 +2,590 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NNic</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark only" />
+  <title>NNimgᵇᵉᵗᵃ — No-Nonsense Image Compressor</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    html,body{height:100%;}
-    body{
-      margin:0;background:#000;color:#fff;
-      font-family:Inter,system-ui,sans-serif;
-      display:flex;flex-direction:column;
-      align-items:center;justify-content:center;
-      height:100vh;text-align:center;overflow:hidden;
+    :root{
+      --bg:#000; --card:#0f0f0f; --text:#fff; --muted:#bdbdbd; --ring:rgba(255,255,255,0.06);
+      --dur:180ms; --ease:cubic-bezier(.25,.1,.25,1);
+      --glow: 0 6px 18px rgba(255,255,255,0.06), inset 0 0 20px rgba(255,255,255,0.02);
     }
-    .logo{width:110px;height:110px;object-fit:contain;filter:grayscale(1)}
-    h1{font-size:18px;margin:14px 0 6px;font-weight:600}
-    .sub{opacity:.75;font-size:13px;margin-bottom:18px}
+    html,body{height:100%;}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:linear-gradient(180deg,#000,#050505);-webkit-font-smoothing:antialiased;padding:18px}
+    .app{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px; padding-bottom:80px /* reserve for footer */;}
+    @media (max-width:980px){ .app{grid-template-columns:1fr} }
+    .panel{background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.02));border:1px solid var(--ring);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+    .drop{border:1px dashed var(--ring);border-radius:10px;padding:14px;display:grid;gap:8px;align-items:center;justify-items:center;text-align:center;cursor:pointer}
+    .btn{appearance:none;background:transparent;color:var(--text);border:1px solid var(--ring);padding:10px 12px;border-radius:8px;font-weight:700;cursor:pointer}
+    .btn.primary{background:var(--text);color:var(--bg);border-color:var(--bg)}
+    .row{display:flex;gap:8px;align-items:center}
+    input,select{background:transparent;border:1px solid var(--ring);color:var(--text);padding:8px;border-radius:8px}
+    label{font-size:13px;color:var(--muted)}
+    .muted{color:var(--muted);font-size:13px}
+    .preview{display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:12px}
+    img.preview-img{max-width:100%;max-height:60vh;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+    .controls{display:grid;gap:10px}
+    .control-row{display:flex;gap:8px;align-items:center}
+    .kbd{padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+    .progress{height:8px;background:var(--ring);border-radius:999px;overflow:hidden}
+    .progress-bar{height:100%;background:var(--text);width:0%;transition:width 200ms var(--ease)}
+    .small{font-size:13px}
+    .right{margin-left:auto}
+    .note{font-size:12px;color:var(--muted)}
+    /* compact loader */
+    .nn-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:0;animation:nn-blink 1s infinite ease-in-out}
+    @keyframes nn-blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
 
-    /* ultra-minimal loader: a fading dot */
-    .dot{width:6px;height:6px;border-radius:50%;background:#fff;opacity:0;animation:blink 1s infinite ease-in-out}
-    @keyframes blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
-    #loader{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease}
-    #loader.hide{opacity:0;pointer-events:none}
+    /* mobile-specific helpers: we'll hide the input panel on small screens when requested */
+    .hidden-mobile{display:flex} /* default for desktop */
+    @media (max-width:980px){
+      .hidden-mobile.hide { display: none !important; }
+      /* hide panels with .hide on narrow screens */
+      .panel.hide { display: none !important; }
+    }
 
-    /* Typewriter */
-    .typewrap{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;letter-spacing:0.6px;font-size:14px}
-    .type{display:inline-block;min-width:160px}
-    /* hide scrollbars */
-    ::-webkit-scrollbar{display:none}
+    /* Home button style (glow like NNpdf) */
+    .home-btn {
+      position: fixed;
+      right: 18px;
+      top: 18px;
+      z-index: 40;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.02);
+      color: var(--text);
+      font-weight:700;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.6), 0 0 0 6px rgba(255,255,255,0.02);
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+    }
+    .home-btn:active { transform: translateY(1px); }
+    .home-btn.glow {
+      box-shadow: 0 10px 28px rgba(255,255,255,0.06), 0 0 0 6px rgba(255,255,255,0.02), 0 0 20px rgba(255,255,255,0.02) inset;
+    }
+    /* Place tip bottom-left inside output panel */
+#outputPanel {
+  position: relative;
+}
+
+#hint {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  opacity: 0.75;
+}
+
+
+    /* footer */
+    .site-footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 10px;
+      pointer-events: none; /* allow clicks to pass unless on child */
+    }
+    .site-footer .inner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 18px; /* more breathing room */
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: auto;
+}
+
+    .site-footer a { color:var(--muted); text-decoration:none; font-weight:600; }
+    /* NoNonsense Loader CSS */
+#nn-loader {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  transition: opacity .5s ease;
+}
+
+.nn-loader-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.nn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  animation: nn-blink 1s infinite ease-in-out;
+}
+
+@keyframes nn-blink {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#nn-loader.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#nn-loader-status {
+  font-family: ui-monospace;
+  font-size: 14px;
+}
+
+#nn-slow-hint {
+  font-size: 12px;
+  opacity: .75;
+  margin-top: 6px;
+  display: none;
+}
+@property --glow-strength {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.glow-btn {
+  --glow-color: rgb(255 255 255 / .70);
+  --glow-base: 2px;
+  --glow-radius: 10px;
+  --glow-spread: 2px;
+  --glow-strength: 0;
+
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .6rem 1.1rem;
+  border-radius: .65rem;
+  background: transparent;
+  color: rgb(255 255 255 / .85);
+  border: 1.5px solid rgb(255 255 255 / .25);
+  outline: var(--glow-base) solid rgb(255 255 255 / .25);
+  box-shadow:
+    0 0 calc(var(--glow-radius) + 8px * var(--glow-strength))
+    calc(var(--glow-spread) + 2px * var(--glow-strength))
+    color-mix(in oklab, var(--glow-color) 100%, transparent);
+  animation: glow-pulse 2.2s ease-in-out infinite;
+  cursor: pointer;
+  transition: 
+    color .25s ease, 
+    background-color .25s ease, 
+    filter .25s ease;
+}
+
+.glow-btn:hover {
+  background: rgb(255 255 255 / .85);
+  color: black;
+  filter: drop-shadow(0 0 6px var(--glow-color)) drop-shadow(0 0 12px var(--glow-color));
+}
+
+.glow-btn:focus-visible {
+  --glow-strength: 1;
+  outline-color: rgb(255 255 255 / .6);
+}
+
+@keyframes glow-pulse {
+  0%, 100% { --glow-strength: .15; }
+  50%      { --glow-strength: 1; }
+}
   </style>
 </head>
 <body>
-  <!-- loader overlay -->
-  <div id="loader" aria-live="polite">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-      <div class="dot" aria-hidden="true"></div>
-      <div id="loaderStatus" style="font-family:ui-monospace;font-size:14px">NoNonsense</div>
-      <div id="slowHint" style="font-size:12px;opacity:.75;margin-top:6px;display:none">Your internet might be slow</div>
+    <!-- NoNonsense Loader HTML -->
+<div id="nn-loader" aria-live="polite">
+  <div class="nn-loader-box">
+    <div class="nn-dot"></div>
+    <div id="nn-loader-status">on the verge!</div>
+    <div id="nn-slow-hint">your internet might be slow :(</div>
+  </div>
+</div>
+  <!-- Home button (top-right) -->
+  <button class="home-btn glow-btn" id="homeBtn">Home</button>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="width:44px;height:44px;border-radius:10px;background:#0a0a0a;display:grid;place-items:center">🖼️</div>
+      <div>
+        <div style="font-weight:800">NNimgᵇᵉᵗᵃ</div>
+        <div class="muted">Compress • Resize • Optimize</div>
+      </div>
     </div>
+    <!-- intentionally empty: footer holds OSS text to match screenshot -->
+    <div style="width:70px"></div>
   </div>
 
-  <img src="logo.jpg" class="logo" alt="logo">
-  <h1>in the making.</h1>
-  <div class="sub">No-Nonsense : Image Compressor</div>
+  <div class="app">
+    <!-- INPUT panel (give it an id so we can hide it on mobile) -->
+    <section id="inputPanel" class="panel hidden-mobile">
+      <div class="muted">Input</div>
+      <div id="drop" class="drop" tabindex="0"> 
+        <div class="small">Drag & drop or</div>
+        <div class="row"><input id="fileInput" type="file" accept="image/*" style="display:none"><button id="pick" class="btn primary">Choose image</button></div>
+        <div class="note">Supports PNG, JPEG, WebP. Animated GIFs will be flattened to first frame.</div>
+      </div>
 
-  <div class="typewrap" aria-live="polite"><span class="type" id="type"></span></div>
+      <div class="muted">Mode</div>
+      <div class="row">
+        <label><input type="radio" name="mode" value="auto" checked> Auto (target −75% size)</label>
+        <label style="margin-left:12px"><input type="radio" name="mode" value="manual"> Manual</label>
+      </div>
 
+      <div id="manualControls" style="display:none" class="controls">
+        <div class="control-row"><label style="width:120px">Width (px)</label><input id="widthInput" type="number" min="1" placeholder="auto"></div>
+        <div class="control-row"><label style="width:120px">Height (px)</label><input id="heightInput" type="number" min="1" placeholder="auto"></div>
+        <div class="control-row"><label style="width:120px">Aspect lock</label><input id="lockAspect" type="checkbox" checked></div>
+        <div class="control-row"><label style="width:120px">Quality</label><input id="quality" type="range" min="0.05" max="1" step="0.01" value="0.8"><div class="kbd" id="qVal">0.80</div></div>
+      </div>
+
+      <div class="muted">Actions</div>
+      <div class="row">
+        <button id="compressBtn" class="btn primary" disabled>Compress</button>
+        <button id="resetBtn" class="btn">Reset</button>
+        <div class="right muted" id="sizeInfo">—</div>
+      </div>
+
+      <div class="progress" aria-hidden="true"><div id="prog" class="progress-bar"></div></div>
+    </section>
+
+    <!-- OUTPUT / Preview panel -->
+    <section id="outputPanel" class="panel hide">
+      <div class="muted">Preview & Output</div>
+      <div class="preview">
+        <div id="previewWrap" style="width:100%"><img id="previewImg" class="preview-img" src="" alt="Preview" style="display:none"></div>
+        <div style="display:flex;gap:8px;width:100%">
+          <div class="muted">Original:</div><div id="origSize" class="muted">—</div>
+          <div class="right muted">Result: <span id="outSize">—</span></div>
+        </div>
+        <div style="display:flex;gap:8px;width:100%">
+          <a id="downloadLink" class="btn" style="display:none;text-decoration: none;">Download</a>
+          <button id="openBtn" class="btn" style="display:none">Open</button>
+          <div class="note" id="hint">Note: Auto mode targets ~75% size reduction using iterative quality + scale tuning.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer (fixed) -->
+  <footer class="site-footer" role="contentinfo" aria-hidden="false">
+    <div class="inner">
+      <div>© 2025 No-Nonsense</div>
+      <div>Open source • <a href="#" aria-label="License link">MIT</a></div>
+    </div>
+  </footer>
   <script>
-    // Loader + slow hint + typewriter
-    (function(){
-      // Typewriter words
-      const words = ['Private','Open Source','Safe','Free'];
-      const typeEl = document.getElementById('type');
-      const TYPING_SPEED = 90;
-      const DELETING_SPEED = 40;
-      const PAUSE_AFTER = 900;
-      let w = 0, i = 0, deleting = false;
+// NoNonsense Loader JS — Updated Texts
+(function () {
+  const statuses = ['on the verge!', 'ready!'];
+  const statusEl = document.getElementById('nn-loader-status');
+  const slowEl = document.getElementById('nn-slow-hint');
+  const loader = document.getElementById('nn-loader');
 
-      function tick(){
-        const current = words[w];
-        if (!deleting){
-          typeEl.textContent = current.slice(0, i+1);
-          i++;
-          if (i === current.length){
-            deleting = true;
-            setTimeout(tick, PAUSE_AFTER);
-            return;
-          }
-          setTimeout(tick, TYPING_SPEED);
-        } else {
-          typeEl.textContent = current.slice(0, i-1);
-          i--;
-          if (i === 0){
-            deleting = false;
-            w = (w + 1) % words.length;
-            setTimeout(tick, 200);
-            return;
-          }
-          setTimeout(tick, DELETING_SPEED);
-        }
-      }
-      // Start typewriter with a small delay
-      setTimeout(tick, 600);
+  let idx = 0, cycling = true;
 
-      // Loader behavior
-      const statuses = ['NoNonsense','Anytime Now'];
-      const statusEl = document.getElementById('loaderStatus');
-      const slowEl = document.getElementById('slowHint');
-      const loader = document.getElementById('loader');
+  // Rotate loading messages
+  function cycle() {
+    if (!cycling) return;
+    statusEl.textContent = statuses[idx % statuses.length];
+    idx++;
+    setTimeout(cycle, 800);
+  }
+  cycle();
 
-      let idx = 0, cycling = true;
-      function cycleStatus(){
-        if(!cycling) return;
-        statusEl.textContent = statuses[idx % statuses.length];
-        idx++;
-        setTimeout(cycleStatus, 800);
-      }
-      cycleStatus();
+  // Show slow warning after 500ms
+  const slowTimer = setTimeout(() => {
+    if (cycling) slowEl.style.display = "block";
+  }, 500);
 
-      // Show slow hint if still loading after 500ms
-      const slowTimer = setTimeout(()=>{ if(cycling) slowEl.style.display = 'block'; }, 500);
+  // When page fully loads
+  window.addEventListener('load', () => {
+    clearTimeout(slowTimer);
+    cycling = false;
+    statusEl.textContent = "ready!";
 
-      // When page loads, stop cycling and hide loader (but ensure minimum 500ms shown)
-      window.addEventListener('load', () => {
-        clearTimeout(slowTimer);
-        cycling = false;
-        statusEl.textContent = 'Ready!';
-        // Keep loader visible at least 500ms then hide
-        setTimeout(() => {
-          loader.classList.add('hide');
-          setTimeout(()=>loader.remove(), 600);
-        }, 500);
-      });
-
-      // Allow click to dismiss if user wants
-      window.addEventListener('click', () => {
-        if(!loader.classList.contains('hide')){
-          cycling = false;
-          statusEl.textContent = 'Ready!';
-          loader.classList.add('hide');
-          setTimeout(()=>loader.remove(), 600);
-        }
-      });
-    })();
+    setTimeout(() => {
+      loader.classList.add("hide");
+      setTimeout(() => loader.remove(), 600);
+    }, 500);
+  });
+})();
   </script>
+
+<script>
+// Utilities
+const pick = document.getElementById('pick');
+const fileInput = document.getElementById('fileInput');
+const drop = document.getElementById('drop');
+const previewImg = document.getElementById('previewImg');
+const previewWrap = document.getElementById('previewWrap');
+const compressBtn = document.getElementById('compressBtn');
+const resetBtn = document.getElementById('resetBtn');
+const modeRadios = Array.from(document.querySelectorAll('input[name="mode"]'));
+const manualControls = document.getElementById('manualControls');
+const widthInput = document.getElementById('widthInput');
+const heightInput = document.getElementById('heightInput');
+const lockAspect = document.getElementById('lockAspect');
+const qualityEl = document.getElementById('quality');
+const qVal = document.getElementById('qVal');
+const origSizeEl = document.getElementById('origSize');
+const outSizeEl = document.getElementById('outSize');
+const sizeInfo = document.getElementById('sizeInfo');
+const downloadLink = document.getElementById('downloadLink');
+const openBtn = document.getElementById('openBtn');
+const prog = document.getElementById('prog');
+const inputPanel = document.getElementById('inputPanel');
+const outputPanel = document.getElementById('outputPanel');
+const homeBtn = document.getElementById('homeBtn');
+
+let currentFile = null;
+let imgNatural = {w:0,h:0};
+let lastBlob = null;
+let lastUrl = null;
+
+function human(n){ if (!n && n!==0) return '—'; if (n<1024) return n+' B'; if (n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(2)+' MB'; }
+
+// Mode toggle
+modeRadios.forEach(r=> r.addEventListener('change', ()=>{
+  if (r.checked && r.value==='manual') manualControls.style.display='block'; else if (r.checked) manualControls.style.display='none';
+}));
+
+// Home button -> scroll to top / reset UI
+if (homeBtn) homeBtn.addEventListener('click', ()=> {
+  window.scrollTo({top:0,behavior:'smooth'});
+  // small visual feedback
+  homeBtn.classList.add('glow');
+  setTimeout(()=> homeBtn.classList.remove('glow'), 420);
+  // show input panel (useful for mobile)
+  setMobileHideInput(false);
+  setMobileShowOutput(false);
+});
+
+// Defensive: ensure Choose button is a proper non-submit button and attach click
+if (pick) {
+  pick.setAttribute('type','button');
+  const newPick = pick.cloneNode(true);
+  pick.parentNode.replaceChild(newPick, pick);
+  newPick.addEventListener('click', ()=> {
+    if (fileInput) fileInput.click();
+  });
+}
+
+// Defensive: attach file input change (re-attach even if original exists)
+if (fileInput) {
+  fileInput.addEventListener('change', async (e)=>{ 
+    if (e.target.files && e.target.files[0]) await handleFile(e.target.files[0]); 
+    e.target.value=''; 
+  });
+}
+
+// Drag/drop
+if (drop) {
+  ['dragenter','dragover','dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{ 
+    e.preventDefault(); e.stopPropagation(); 
+    if (ev==='dragenter' || ev==='dragover') drop.classList.add('drag-over'); else drop.classList.remove('drag-over'); 
+  }));
+  drop.addEventListener('drop', e=>{ const f = (e.dataTransfer.files||[])[0]; if (f) handleFile(f); });
+}
+
+audioLock = false;
+async function handleFile(file){
+  if (!file.type.startsWith('image/')) { alert('Please pick an image'); return; }
+  currentFile = file;
+  origSizeEl.textContent = human(file.size);
+  sizeInfo.textContent = 'Loaded: '+file.name;
+  // read as dataURL
+  const dataUrl = await readAsDataURL(file);
+  previewImg.src = dataUrl; previewImg.style.display='block';
+  // measure natural size
+  await new Promise(r=>{ previewImg.onload = ()=>{ imgNatural.w = previewImg.naturalWidth; imgNatural.h = previewImg.naturalHeight; r(); } });
+  widthInput.value = imgNatural.w; heightInput.value = imgNatural.h;
+  compressBtn.disabled = false;
+  outSizeEl.textContent = '—';
+  downloadLink.style.display = 'none'; openBtn.style.display='none';
+  // hide output until user presses Compress (mobile behavior)
+  setMobileShowOutput(false);
+  ensurePanelsVisible();
+}
+function readAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=err=>rej(err); r.readAsDataURL(file); }); }
+
+// Maintain aspect
+widthInput.addEventListener('input', ()=>{ if (!lockAspect.checked) return; const w = Number(widthInput.value); if (!w) return; const h = Math.round(w * (imgNatural.h / imgNatural.w)); heightInput.value = h; });
+heightInput.addEventListener('input', ()=>{ if (!lockAspect.checked) return; const h = Number(heightInput.value); if (!h) return; const w = Math.round(h * (imgNatural.w / imgNatural.h)); widthInput.value = w; });
+qualityEl.addEventListener('input', ()=> qVal.textContent = Number(qualityEl.value).toFixed(2));
+
+// Helper: decide if we are on mobile / narrow viewport
+function isNarrow(){ return window.innerWidth <= 980; }
+
+// Show/hide panels appropriately on mobile
+function setMobileHideInput(hide){
+  if (!inputPanel) return;
+  if (isNarrow()){
+    if (hide) inputPanel.classList.add('hide');
+    else inputPanel.classList.remove('hide');
+  } else {
+    // desktop: always show both panels
+    inputPanel.classList.remove('hide');
+  }
+}
+
+// Show/hide output panel on narrow (keeps parity with input hide/show)
+function setMobileShowOutput(show){
+  if (!outputPanel) return;
+  if (isNarrow()){
+    if (show) outputPanel.classList.remove('hide');
+    else outputPanel.classList.add('hide');
+  } else {
+    // desktop: always show
+    outputPanel.classList.remove('hide');
+  }
+}
+
+function ensurePanelsVisible(){
+  // on desktop both present; on mobile ensure input is visible unless we've hidden it
+  if (!isNarrow()){
+    inputPanel.style.display = 'flex';
+    outputPanel.style.display = 'flex';
+  } else {
+    // keep current class state
+    inputPanel.style.display = inputPanel.classList.contains('hide') ? 'none' : 'flex';
+    outputPanel.style.display = outputPanel.classList.contains('hide') ? 'none' : 'flex';
+  }
+}
+
+// Compress logic
+compressBtn.addEventListener('click', async ()=>{
+  if (!currentFile) return;
+  // Hide the input panel immediately when user presses Compress and show output
+  setMobileHideInput(true);
+  setMobileShowOutput(true);
+
+  prog.style.width = '20%';
+  compressBtn.disabled = true;
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const originalSize = currentFile.size;
+  try{
+    if (mode==='manual'){
+      const w = Number(widthInput.value) || imgNatural.w;
+      const h = Number(heightInput.value) || imgNatural.h;
+      const quality = Number(qualityEl.value) || 0.8;
+      const blob = await compressImage(previewImg, w, h, quality);
+      await onResult(blob, originalSize);
+    } else {
+      // AUTO: target size ≈ original * 0.25 (reduce by 75%)
+      const target = Math.max(2000, Math.floor(originalSize * 0.25)); // at least 2KB target
+      const blob = await compressToTarget(previewImg, originalSize, target);
+      await onResult(blob, originalSize);
+    }
+  }catch(err){ alert('Compression failed: '+err.message); console.error(err); }
+  compressBtn.disabled = false;
+  prog.style.width = '100%'; setTimeout(()=>prog.style.width='0%',600);
+});
+
+async function onResult(blob, originalSize){
+  lastBlob = blob;
+  if (lastUrl) URL.revokeObjectURL(lastUrl);
+  lastUrl = URL.createObjectURL(blob);
+  downloadLink.href = lastUrl; downloadLink.download = (currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'image') + '-compressed.jpg';
+  downloadLink.style.display='inline-flex';
+  openBtn.style.display='inline-flex';
+  openBtn.onclick = ()=> window.open(lastUrl, '_blank');
+  outSizeEl.textContent = human(blob.size);
+  sizeInfo.textContent = `Saved: ${(100 - Math.round((blob.size/originalSize)*100))}%`;
+  // ensure output panel is visible (especially on mobile)
+  setMobileShowOutput(true);
+  ensurePanelsVisible();
+}
+
+// compress image into jpeg/webp blob at specified size
+function compressImage(imgEl, targetW, targetH, quality=0.8, mime='image/jpeg'){
+  return new Promise((res,rej)=>{
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(targetW));
+    canvas.height = Math.max(1, Math.round(targetH));
+    const ctx = canvas.getContext('2d');
+    // draw with smoothing
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(b=>{ if (b) res(b); else rej(new Error('toBlob failed')); }, mime, quality);
+  });
+}
+
+// iterative strategy to reach target file size (for auto mode)
+async function compressToTarget(imgEl, originalSize, targetSize){
+  // start with original dimensions, lower quality and then scale down progressively
+  let quality = 0.85;
+  let scale = 1;
+  let lastBlobLocal = null;
+  const minQuality = 0.25;
+  const minScale = 0.15;
+  // try a few iterations reducing quality first, then scale
+  for (let iter=0; iter<12; iter++){
+    const w = Math.max(1, Math.round(imgNatural.w * scale));
+    const h = Math.max(1, Math.round(imgNatural.h * scale));
+    prog.style.width = (10 + iter*6) + '%';
+    const blob = await compressImage(imgEl, w, h, quality);
+    lastBlobLocal = blob;
+    if (blob.size <= targetSize) return blob;
+    // reduce quality if above minQuality, else reduce scale
+    if (quality > minQuality) { quality = Math.max(minQuality, quality - 0.12); }
+    else { scale = Math.max(minScale, scale - 0.18); }
+    // break early if too small scale
+    if (scale <= minScale && quality <= minQuality) break;
+  }
+  // if couldn't hit target, return the best we got (smallest)
+  return lastBlobLocal;
+}
+
+// Reset
+resetBtn.addEventListener('click', ()=>{ 
+  currentFile=null; 
+  previewImg.src=''; 
+  previewImg.style.display='none'; 
+  origSizeEl.textContent='—'; 
+  outSizeEl.textContent='—'; 
+  sizeInfo.textContent='—'; 
+  compressBtn.disabled=true; 
+  downloadLink.style.display='none'; 
+  openBtn.style.display='none'; 
+  if (lastUrl){ URL.revokeObjectURL(lastUrl); lastUrl=null; } 
+  // restore panels
+  setMobileHideInput(false);
+  setMobileShowOutput(false);
+});
+
+// keep panels state correct on resize
+window.addEventListener('resize', ()=>{
+  if (!isNarrow()){
+    inputPanel.style.display = 'flex';
+    inputPanel.classList.remove('hide');
+    outputPanel.style.display = 'flex';
+    outputPanel.classList.remove('hide');
+  } else {
+    // on narrow view if class hide present, hide input
+    inputPanel.style.display = inputPanel.classList.contains('hide') ? 'none' : 'flex';
+    outputPanel.style.display = outputPanel.classList.contains('hide') ? 'none' : 'flex';
+  }
+});
+
+// initial layout fix
+ensurePanelsVisible();
+
+</script>
+
 </body>
-</html>      
+</html>
+     
