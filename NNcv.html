@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark only" />
+<title>NNcv — No-Nonsense Resume Builder</title>
+
+<!-- Outfit ONLY for resume -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+
+<style>
+/* =====================
+   GLOBAL / UI (SYSTEM FONT)
+===================== */
+:root{
+  --bg:#000;
+  --panel:#0f0f0f;
+  --text:#fff;
+  --muted:#bdbdbd;
+  --ring:rgba(255,255,255,.08);
+  --radius:14px;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;
+  background:linear-gradient(180deg,#000,#050505);
+  color:var(--text);
+  overflow:hidden;
+}
+
+/* =====================
+   LAYOUT
+===================== */
+.app{
+  height:100dvh;
+  max-width:1400px;
+  margin:0 auto;
+  padding:14px;
+  display:grid;
+  grid-template-columns:380px 1fr;
+  gap:14px;
+}
+@media(max-width:980px){
+  .app{grid-template-columns:1fr}
+}
+
+.panel{
+  background:linear-gradient(180deg,var(--panel),rgba(255,255,255,.02));
+  border:1px solid var(--ring);
+  border-radius:var(--radius);
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+}
+
+.left-scroll{overflow:auto;padding-right:6px}
+.right-fixed{overflow:auto}
+
+/* =====================
+   TOP BAR
+===================== */
+.top-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+.top-bar h1{
+  font-size:18px;
+  font-weight:700;
+  margin:0;
+}
+.btn{
+  appearance:none;
+  background:transparent;
+  color:var(--text);
+  border:1px solid var(--ring);
+  border-radius:10px;
+  padding:8px 14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .25s var(--ease);
+}
+.btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+/* =====================
+   ACCORDION
+===================== */
+.accordion section{
+  border-top:1px solid var(--ring);
+}
+.accordion button{
+  all:unset;
+  cursor:pointer;
+  width:100%;
+  padding:12px 4px;
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+}
+.accordion button span{color:var(--muted)}
+
+.accordion .content{
+  max-height:0;
+  overflow:hidden;
+  opacity:0;
+  transition:all .35s var(--ease);
+}
+.accordion section.active .content{
+  max-height:2000px;
+  opacity:1;
+  padding-bottom:12px;
+}
+
+/* =====================
+   INPUTS
+===================== */
+label{font-size:12px;color:var(--muted)}
+input,textarea{
+  width:100%;
+  background:transparent;
+  border:1px solid var(--ring);
+  color:var(--text);
+  padding:8px;
+  border-radius:8px;
+  margin-bottom:8px;
+  font-family:inherit;
+}
+textarea{resize:vertical;min-height:60px}
+input[type="checkbox"]{width:auto;margin-right:6px}
+
+.add-btn{
+  margin-top:6px;
+  font-size:13px;
+  color:var(--muted);
+  cursor:pointer;
+  transition:color .2s ease;
+}
+.add-btn:hover{color:var(--text)}
+
+.item-box{
+  border:1px solid var(--ring);
+  padding:8px;
+  border-radius:8px;
+  margin-bottom:8px;
+}
+
+/* =====================
+   RESUME CANVAS (OUTFIT ONLY)
+===================== */
+.resume{
+  font-family:'Outfit',system-ui,sans-serif;
+  background:#fff;
+  color:#000;
+  padding:42px;
+  font-size:14px;
+  line-height:1.45;
+  border-radius:var(--radius);
+  animation:fadeIn .35s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.resume a{color:inherit;text-decoration:none}
+.resume a:hover{text-decoration:underline}
+
+/* Header */
+.r-name{text-align:center;font-size:36px;font-weight:700}
+.r-title{text-align:center;margin-top:4px}
+.r-contact,.r-links{text-align:center;font-size:12px;margin-top:4px}
+.r-links{font-weight:600}
+
+/* Sections */
+.section{margin-top:24px}
+.section h3{
+  font-size:13px;
+  letter-spacing:.8px;
+  color:#666;
+  margin-bottom:8px;
+  text-transform:uppercase;
+}
+.entry{margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:baseline}
+.left{font-weight:600}
+.right{color:#666;white-space:nowrap;margin-left:12px}
+ul{margin:6px 0 0 16px;padding:0}
+
+/* =====================
+   PRINT
+===================== */
+@media print{
+  body{background:#fff;margin:0;padding:0}
+  .panel:first-child{display:none !important}
+  .app{
+    display:block !important;
+    height:auto !important;
+    padding:0 !important;
+    max-width:100% !important;
+  }
+  .panel{
+    border:none !important;
+    background:#fff !important;
+    padding:0 !important;
+  }
+  .resume{
+    padding:0.5in !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+  }
+  .resume a{text-decoration:underline}
+  .section{page-break-inside:avoid}
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <div class="top-bar">
+    <h1>NNcv</h1>
+    <button class="btn" onclick="downloadPDF()">Download</button>
+  </div>
+
+  <div class="left-scroll accordion">
+
+    <!-- PERSONAL INFO -->
+    <section class="active">
+      <button>Personal Info <span>▾</span></button>
+      <div class="content">
+        <label>First Name</label><input id="first">
+        <label>Last Name</label><input id="last">
+        <label>Job Title</label><input id="title">
+        <label>Email</label><input id="email">
+        <label>Phone</label><input id="phone">
+        <label>Address</label><input id="address">
+        <label>Links (Label | URL, max 5, one per line)</label>
+        <textarea id="links" rows="3"></textarea>
+      </div>
+    </section>
+
+    <!-- SUMMARY (OPTIONAL) -->
+    <section>
+      <button>Summary / Objective <span>▸</span></button>
+      <div class="content">
+        <label><input type="checkbox" id="summaryToggle" onchange="render()"> Show summary section</label>
+        <textarea id="summary" placeholder="2-3 lines introducing yourself..." rows="3"></textarea>
+      </div>
+    </section>
+
+    <!-- SKILLSETS -->
+    <section>
+      <button>Skillsets <span>▸</span></button>
+      <div class="content">
+        <label>Programming Languages</label>
+        <input id="skillLang" placeholder="e.g., Python, JavaScript, Java">
+        <label>Libraries / Frameworks</label>
+        <input id="skillFramework" placeholder="e.g., React, Django, TensorFlow">
+        <label>Tools / Platforms</label>
+        <input id="skillTools" placeholder="e.g., Git, Docker, AWS">
+        <label>Databases</label>
+        <input id="skillDB" placeholder="e.g., PostgreSQL, MongoDB, Redis">
+      </div>
+    </section>
+
+    <!-- EDUCATION -->
+    <section>
+      <button>Education <span>▸</span></button>
+      <div class="content">
+        <div id="education"></div>
+        <div class="add-btn" onclick="addEducation()">+ Add education</div>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE -->
+    <section>
+      <button>Experience / Work History <span>▸</span></button>
+      <div class="content">
+        <div id="experience"></div>
+        <div class="add-btn" onclick="addExperience()">+ Add experience</div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section>
+      <button>Projects / Open Source <span>▸</span></button>
+      <div class="content">
+        <div id="projects"></div>
+        <div class="add-btn" onclick="addProject()">+ Add project</div>
+      </div>
+    </section>
+
+    <!-- CERTIFICATIONS -->
+    <section>
+      <button>Certifications <span>▸</span></button>
+      <div class="content">
+        <div id="certs"></div>
+        <div class="add-btn" onclick="addCert()">+ Add certification</div>
+      </div>
+    </section>
+
+    <!-- HONORS & AWARDS -->
+    <section>
+      <button>Honors & Awards <span>▸</span></button>
+      <div class="content">
+        <div id="honors"></div>
+        <div class="add-btn" onclick="addHonor()">+ Add honor/award</div>
+      </div>
+    </section>
+
+    <!-- VOLUNTEERING -->
+    <section>
+      <button>Volunteering / Extracurriculars <span>▸</span></button>
+      <div class="content">
+        <div id="volunteering"></div>
+        <div class="add-btn" onclick="addVolunteering()">+ Add volunteering</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel right-fixed">
+  <div class="resume">
+
+    <div class="r-name" id="rName"></div>
+    <div class="r-title" id="rTitle"></div>
+    <div class="r-contact" id="rContact"></div>
+    <div class="r-links" id="rLinks"></div>
+
+    <div class="section" id="rSummarySection" style="display:none">
+      <h3>Summary</h3>
+      <div id="rSummary"></div>
+    </div>
+
+    <div class="section" id="rSkillsSection" style="display:none">
+      <h3>Skills</h3>
+      <div id="rSkills"></div>
+    </div>
+
+    <div class="section" id="rEducationSection" style="display:none">
+      <h3>Education</h3>
+      <div id="rEducation"></div>
+    </div>
+
+    <div class="section" id="rExperienceSection" style="display:none">
+      <h3>Experience</h3>
+      <div id="rExperience"></div>
+    </div>
+
+    <div class="section" id="rProjectsSection" style="display:none">
+      <h3>Projects / Open-Source</h3>
+      <div id="rProjects"></div>
+    </div>
+
+    <div class="section" id="rCertsSection" style="display:none">
+      <h3>Certifications</h3>
+      <div id="rCerts"></div>
+    </div>
+
+    <div class="section" id="rHonorsSection" style="display:none">
+      <h3>Honors & Awards</h3>
+      <div id="rHonors"></div>
+    </div>
+
+    <div class="section" id="rVolunteeringSection" style="display:none">
+      <h3>Volunteering / Extracurriculars</h3>
+      <div id="rVolunteering"></div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+
+<script>
+/* Accordion */
+document.querySelectorAll('.accordion section > button').forEach(btn=>{
+  btn.onclick=()=>{
+    const sec = btn.parentElement;
+    const wasActive = sec.classList.contains('active');
+    document.querySelectorAll('.accordion section')
+      .forEach(s=>{
+        s.classList.remove('active');
+        s.querySelector('span').textContent = '▸';
+      });
+    if(!wasActive){
+      sec.classList.add('active');
+      btn.querySelector('span').textContent = '▾';
+    }
+  }
+});
+
+const $=id=>document.getElementById(id);
+let education=[], experience=[], projects=[], certs=[], honors=[], volunteering=[];
+
+function addEducation(){
+  education.push({institution:'',degree:'',field:'',location:'',dates:'',gpa:''});
+  renderInputs(); render();
+}
+function addExperience(){
+  experience.push({company:'',role:'',location:'',dates:'',bullets:''});
+  renderInputs(); render();
+}
+function addProject(){
+  projects.push({name:'',url:'',desc:''});
+  renderInputs(); render();
+}
+function addCert(){
+  certs.push({name:'',url:'',issuer:'',year:''});
+  renderInputs(); render();
+}
+function addHonor(){
+  honors.push({title:'',desc:'',year:''});
+  renderInputs(); render();
+}
+function addVolunteering(){
+  volunteering.push({org:'',role:'',duration:'',desc:''});
+  renderInputs(); render();
+}
+
+function removeItem(arr, idx){
+  arr.splice(idx, 1);
+  renderInputs(); render();
+}
+
+function escapeHtml(str){
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderInputs(){
+  $('education').innerHTML=education.map((e,i)=>`
+    <div class="item-box">
+      <input placeholder="Institution" value="${escapeHtml(e.institution)}" oninput="education[${i}].institution=this.value;render()">
+      <input placeholder="Degree (e.g., Bachelor of Science)" value="${escapeHtml(e.degree)}" oninput="education[${i}].degree=this.value;render()">
+      <input placeholder="Field of study" value="${escapeHtml(e.field)}" oninput="education[${i}].field=this.value;render()">
+      <input placeholder="Location" value="${escapeHtml(e.location)}" oninput="education[${i}].location=this.value;render()">
+      <input placeholder="Dates (e.g., Aug 2019 - May 2023)" value="${escapeHtml(e.dates)}" oninput="education[${i}].dates=this.value;render()">
+      <input placeholder="GPA (optional)" value="${escapeHtml(e.gpa)}" oninput="education[${i}].gpa=this.value;render()">
+      <div class="add-btn" onclick="removeItem(education,${i})" style="color:#ff4444">✕ Remove</div>
+    </div>
+  `).join('');
+
+  $('experience').innerHTML=experience.map((e,i)=>`
+    <div class="item-box">
+      <input placeholder="Company" value="${escapeHtml(e.company)}" oninput="experience[${i}].company=this.value;render()">
+      <input placeholder="Role" value="${escapeHtml(e.role)}" oninput="experience[${i}].role=this.value;render()">
+      <input placeholder="Location" value="${escapeHtml(e.location)}" oninput="experience[${i}].location=this.value;render()">
+      <input placeholder="Dates (e.g., Jan 2023 - Present)" value="${escapeHtml(e.dates)}" oninput="experience[${i}].dates=this.value;render()">
+      <textarea placeholder="Bullet points (one per line)" oninput="experience[${i}].bullets=this.value;render()">${escapeHtml(e.bullets)}</textarea>
+      <div class="add-btn" onclick="removeItem(experience,${i})" style="color:#ff4444">✕ Remove</div>
+    </div>
+  `).join('');
+
+  $('projects').innerHTML=projects.map((p,i)=>`
+    <div class="item-box">
+      <input placeholder="Project name" value="${escapeHtml(p.name)}" oninput="projects[${i}].name=this.value;render()">
+      <input placeholder="Project URL" value="${escapeHtml(p.url)}" oninput="projects[${i}].url=this.value;render()">
+      <textarea placeholder="Description bullets (one per line)" oninput="projects[${i}].desc=this.value;render()">${escapeHtml(p.desc)}</textarea>
+      <div class="add-btn" onclick="removeItem(projects,${i})" style="color:#ff4444">✕ Remove</div>
+    </div>
+  `).join('');
+
+  $('certs').innerHTML=certs.map((c,i)=>`
+    <div class="item-box">
+      <input placeholder="Certification name" value="${escapeHtml(c.name)}" oninput="certs[${i}].name=this.value;render()">
+      <input placeholder="Certification URL" value="${escapeHtml(c.url)}" oninput="certs[${i}].url=this.value;render()">
+      <input placeholder="Issuer (e.g., AWS, Google)" value="${escapeHtml(c.issuer)}" oninput="certs[${i}].issuer=this.value;render()">
+      <input placeholder="Year (optional)" value="${escapeHtml(c.year)}" oninput="certs[${i}].year=this.value;render()">
+      <div class="add-btn" onclick="removeItem(certs,${i})" style="color:#ff4444">✕ Remove</div>
+    </div>
+  `).join('');
+
+  $('honors').innerHTML=honors.map((h,i)=>`
+    <div class="item-box">
+      <input placeholder="Award title" value="${escapeHtml(h.title)}" oninput="honors[${i}].title=this.value;render()">
+      <input placeholder="Description (optional)" value="${escapeHtml(h.desc)}" oninput="honors[${i}].desc=this.value;render()">
+      <input placeholder="Year (optional)" value="${escapeHtml(h.year)}" oninput="honors[${i}].year=this.value;render()">
+      <div class="add-btn" onclick="removeItem(honors,${i})" style="color:#ff4444">✕ Remove</div>
+    </div>
+  `).join('');
+
+  $('volunteering').innerHTML=volunteering.map((v,i)=>`
+    <div class="item-box">
+      <input placeholder="Organization" value="${escapeHtml(v.org)}" oninput="volunteering[${i}].org=this.value;render()">
+      <input placeholder="Role" value="${escapeHtml(v.role)}" oninput="volunteering[${i}].role=this.value;render()">
+      <input placeholder="Duration (e.g., 2020-2022)" value="${escapeHtml(v.duration)}" oninput="volunteering[${i}].duration=this.value;render()">
+      <textarea placeholder="Description" oninput="volunteering[${i}].desc=this.value;render()">${escapeHtml(v.desc)}</textarea>
+      <div class="add-btn" onclick="removeItem(volunteering,${i})" style="color:#ff4444">✕ Remove</div>
+    </div>
+  `).join('');
+}
+
+function render(){
+  // Personal Info
+  const firstName = $('first').value.trim();
+  const lastName = $('last').value.trim();
+  $('rName').textContent = [firstName, lastName].filter(Boolean).join(' ');
+  $('rTitle').textContent = $('title').value.trim();
+  
+  $('rContact').textContent = [
+    $('email').value.trim(),
+    $('phone').value.trim(),
+    $('address').value.trim()
+  ].filter(Boolean).join(' | ');
+
+  const linksVal = $('links').value.split('\n').filter(l=>l.trim()).slice(0,5);
+  $('rLinks').innerHTML = linksVal.map(l=>{
+    const parts = l.split('|').map(s=>s.trim());
+    if(parts.length >= 2 && parts[1]){
+      return `<a href="${escapeHtml(parts[1])}" target="_blank">${escapeHtml(parts[0])}</a>`;
+    }
+    return escapeHtml(parts[0]);
+  }).join(' | ');
+
+  // Summary
+  const summaryToggle = $('summaryToggle').checked;
+  const summaryText = $('summary').value.trim();
+  const summarySection = $('rSummarySection');
+  if(summaryToggle && summaryText){
+    summarySection.style.display = 'block';
+    $('rSummary').textContent = summaryText;
+  } else {
+    summarySection.style.display = 'none';
+  }
+
+  // Skills
+  const skills = [
+    {label:'Programming Languages', val:$('skillLang').value.trim()},
+    {label:'Libraries / Frameworks', val:$('skillFramework').value.trim()},
+    {label:'Tools / Platforms', val:$('skillTools').value.trim()},
+    {label:'Databases', val:$('skillDB').value.trim()}
+  ].filter(s=>s.val);
+  
+  const skillsSection = $('rSkillsSection');
+  if(skills.length){
+    skillsSection.style.display = 'block';
+    $('rSkills').innerHTML = skills.map(s=>
+      `<div style="margin-bottom:4px"><strong>${s.label}:</strong> ${escapeHtml(s.val)}</div>`
+    ).join('');
+  } else {
+    skillsSection.style.display = 'none';
+  }
+
+  // Education
+  const educationSection = $('rEducationSection');
+  if(education.length && education.some(e=>e.institution.trim())){
+    educationSection.style.display = 'block';
+    $('rEducation').innerHTML = education.filter(e=>e.institution.trim()).map(e=>{
+      const line1 = `<div class="row"><div class="left">${escapeHtml(e.institution)}</div><div class="right">${escapeHtml(e.location)}</div></div>`;
+      const degreeParts = [e.degree.trim(), e.field.trim()].filter(Boolean);
+      const degreeText = degreeParts.join(' in ');
+      const gpaText = e.gpa.trim() ? `, GPA: ${escapeHtml(e.gpa)}` : '';
+      const line2 = degreeText ? `<div class="row"><div>${escapeHtml(degreeText)}${gpaText}</div><div class="right">${escapeHtml(e.dates)}</div></div>` : '';
+      return `<div class="entry">${line1}${line2}</div>`;
+    }).join('');
+  } else {
+    educationSection.style.display = 'none';
+  }
+
+  // Experience
+  const experienceSection = $('rExperienceSection');
+  if(experience.length && experience.some(e=>e.company.trim())){
+    experienceSection.style.display = 'block';
+    $('rExperience').innerHTML = experience.filter(e=>e.company.trim()).map(e=>{
+      const bullets = e.bullets.split('\n').filter(b=>b.trim()).map(b=>`<li>${escapeHtml(b)}</li>`).join('');
+      return `
+        <div class="entry">
+          <div class="row"><div class="left">${escapeHtml(e.company)}</div><div class="right">${escapeHtml(e.location)}</div></div>
+          <div class="row"><div>${escapeHtml(e.role)}</div><div class="right">${escapeHtml(e.dates)}</div></div>
+          ${bullets ? `<ul>${bullets}</ul>` : ''}
+        </div>
+      `;
+    }).join('');
+  } else {
+    experienceSection.style.display = 'none';
+  }
+
+  // Projects
+  const projectsSection = $('rProjectsSection');
+  if(projects.length && projects.some(p=>p.name.trim())){
+    projectsSection.style.display = 'block';
+    $('rProjects').innerHTML = projects.filter(p=>p.name.trim()).map(p=>{
+      const projectName = p.url.trim() 
+        ? `<a href="${escapeHtml(p.url)}" target="_blank">${escapeHtml(p.name)}</a>` 
+        : escapeHtml(p.name);
+      const bullets = p.desc.split('\n').filter(d=>d.trim()).map(d=>`<li>${escapeHtml(d)}</li>`).join('');
+      return `
+        <div class="entry">
+          <div class="left">${projectName}</div>
+          ${bullets ? `<ul>${bullets}</ul>` : ''}
+        </div>
+      `;
+    }).join('');
+  } else {
+    projectsSection.style.display = 'none';
+  }
+
+  // Certifications
+  const certsSection = $('rCertsSection');
+  if(certs.length && certs.some(c=>c.name.trim())){
+    certsSection.style.display = 'block';
+    $('rCerts').innerHTML = certs.filter(c=>c.name.trim()).map(c=>{
+      const certName = c.url.trim() 
+        ? `<a href="${escapeHtml(c.url)}" target="_blank">${escapeHtml(c.name)}</a>` 
+        : escapeHtml(c.name);
+      const meta = [c.issuer.trim(), c.year.trim()].filter(Boolean).join(', ');
+      return `<div>${certName}${meta ? ` — ${escapeHtml(meta)}` : ''}</div>`;
+    }).join('');
+  } else {
+    certsSection.style.display = 'none';
+  }
+
+  // Honors & Awards
+  const honorsSection = $('rHonorsSection');
+  if(honors.length && honors.some(h=>h.title.trim())){
+    honorsSection.style.display = 'block';
+    $('rHonors').innerHTML = honors.filter(h=>h.title.trim()).map(h=>{
+      const meta = [h.desc.trim(), h.year.trim()].filter(Boolean).join(', ');
+      return `<div><strong>${escapeHtml(h.title)}</strong>${meta ? ` — ${escapeHtml(meta)}` : ''}</div>`;
+    }).join('');
+  } else {
+    honorsSection.style.display = 'none';
+  }
+
+  // Volunteering
+  const volunteeringSection = $('rVolunteeringSection');
+  if(volunteering.length && volunteering.some(v=>v.org.trim())){
+    volunteeringSection.style.display = 'block';
+    $('rVolunteering').innerHTML = volunteering.filter(v=>v.org.trim()).map(v=>{
+      return `
+        <div class="entry">
+          <div class="row"><div class="left">${escapeHtml(v.org)}</div><div class="right">${escapeHtml(v.duration)}</div></div>
+          ${v.role.trim() ? `<div>${escapeHtml(v.role)}</div>` : ''}
+          ${v.desc.trim() ? `<div style="margin-top:4px">${escapeHtml(v.desc)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  } else {
+    volunteeringSection.style.display = 'none';
+  }
+}
+
+document.querySelectorAll('input:not([type=checkbox]),textarea').forEach(e=>{
+  e.addEventListener('input',render);
+});
+
+function downloadPDF(){
+  // Ensure render is complete
+  render();
+  // Small delay to ensure DOM is updated
+  setTimeout(()=>{
+    window.print();
+  }, 100);
+}
+
+renderInputs();
+render();
+</script>
+
+</body>
+</html>
