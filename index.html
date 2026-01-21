@@ -587,6 +587,69 @@
       .nn-pre__bar > i { transition: none; }
       .nn-odo .stack { transition: none; }
     }
+    /* =========================
+   NNledger — Always-On Animated Glow
+   Scoped, non-hover, premium
+========================= */
+#NNledger{
+  position: relative;
+  z-index: 0;
+  overflow: visible; /* allow glow outside card */
+}
+
+/* Animated glow layer */
+#NNledger::before{
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+
+  background: linear-gradient(
+    45deg,
+    #ff0000,
+    #ff7300,
+    #fffb00,
+    #48ff00,
+    #00ffd5,
+    #002bff,
+    #7a00ff,
+    #ff00c8,
+    #ff0000
+  );
+  background-size: 400% 400%;
+
+  filter: blur(6px);
+  opacity: 0.55;
+
+  z-index: -1;
+  animation: NNledgerGlow 30s linear infinite;
+  pointer-events: none;
+}
+
+/* Inner solid layer to preserve original tool look */
+#NNledger::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0b0b0b; /* matches .tool */
+  border-radius: inherit;
+  z-index: -1;
+}
+
+/* Scoped keyframes */
+@keyframes NNledgerGlow{
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position:   0% 50%; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #NNledger::before { animation: none; }
+}
+
+
+
   </style>
 </head>
 <body>
@@ -649,10 +712,10 @@
             <span class="tool-name">NNic</span>
             <span class="tool-desc">Image Compressor</span>
           </a>
-          <a class="tool" href="./NNcv.html">
+          <a class="tool" id="NNledger" href="https://nnledger.vercel.app/">
             <span class="tool-badge soon">alpha</span>
-            <span class="tool-name">NNcv</span>
-            <span class="tool-desc">Resume Maker<sup style="font-size: 0.7em;">Desktop recommended</sup></span>
+            <span class="tool-name">NNledger</span>
+            <span class="tool-desc">Financial Ledger<sup style="font-size: 0.7em;">Private Server</sup></span>
           </a>
         </nav>
       </div>
@@ -820,4 +883,5 @@
   </script>
 </body>
 </html>
+
 
