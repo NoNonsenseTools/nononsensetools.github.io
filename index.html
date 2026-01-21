@@ -650,6 +650,78 @@
 
 
 
+
+
+
+/* =========================
+   NNledger — Rainbow Text Glow
+========================= */
+.nn-rainbow-text {
+  position: relative;
+  font-weight: 900;
+  color: transparent;
+
+  background: linear-gradient(
+    90deg,
+    #f85032,
+    #e73827,
+    #ef9400,
+    #ff6a00,
+    #d4145a,
+    #fbb03b,
+    #d4145a,
+    #e73827,
+    #f85032
+  );
+  background-size: 400% 100%;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  animation: NNTextRainbow 30s linear infinite;
+}
+
+/* Subtle glow around text (not overpowering) */
+.nn-rainbow-text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+
+  background: inherit;
+  background-size: inherit;
+  animation: inherit;
+
+  filter: blur(12px);
+  opacity: 0.35;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  pointer-events: none;
+}
+
+/* Animation */
+@keyframes NNTextRainbow {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .nn-rainbow-text {
+    animation: none;
+  }
+}
+
+
+
+
+
+
+
+    
+
   </style>
 </head>
 <body>
@@ -698,7 +770,10 @@
     <section class="hero">
       <div>
         <h1 style="font-size: 20px; color: #706f6f; filter: blur(1px);">NNic<sup style="font-size: 0.5em;">beta</sup> Out Now!</h1>
-        <h1 style="font-size: 50px;">NNcv<sup style="font-size: 0.5em;">alpha</sup> Out Now!</h1>
+        <h1 style="font-size: 20px; color: #706f6f; filter: blur(1px);">NNic<sup style="font-size: 0.5em;">beta</sup> Out Now!</h1>
+<h1 class="nn-rainbow-text" style="font-size: 50px;">
+  NNledger<sup style="font-size: 0.5em;">alpha</sup> Out Now!
+</h1>
         <h1>Fast, open-source tools that run entirely in your browser.</h1>
         <p>Everything is 100% client-side. Your files never leave your device.</p>
         <nav class="tools">
@@ -883,5 +958,6 @@
   </script>
 </body>
 </html>
+
 
 
