@@ -1,214 +1,522 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="dark only" />
-  <title>NNimgᵇᵉᵗᵃ — No-Nonsense Image Compressor</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/jpeg" href="logo.jpg" />
-  <style>
-    :root{
-      --bg:#000; --card:#0f0f0f; --text:#fff; --muted:#bdbdbd; --ring:rgba(255,255,255,0.06);
-      --dur:180ms; --ease:cubic-bezier(.25,.1,.25,1);
-      --glow: 0 6px 18px rgba(255,255,255,0.06), inset 0 0 20px rgba(255,255,255,0.02);
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#050506">
+<title>NNimgᵇᵉᵗᵃ — No-Nonsense Image Compressor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/jpeg" href="logo.jpg">
+<style>
+  :root{
+    --disp:'Space Grotesk', ui-sans-serif, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --ease:cubic-bezier(.25,.1,.25,1);
+    --spring:cubic-bezier(.3,1.3,.4,1);
+  }
+  body{
+    --fg:#f4f6ff;
+    --fg-dim:rgba(244,246,255,.62);
+    --fg-faint:rgba(244,246,255,.4);
+    --ind:#f2f4ff;
+    --ind-fg:#0c0e18;
+    --edge:rgba(255,255,255,.16);
+    --edge-soft:rgba(255,255,255,.09);
+    /* glass panes are nearly transparent — the WebGL lens underneath
+       IS the glass. heavy tints or backdrop-filter would hide it */
+    --glass-tint:rgba(255,255,255,.06);
+    --panel-tint:rgba(8,10,18,.34);      /* light scrim only, forms stay readable */
+    --solid-fallback:rgba(10,12,20,.92);
+    --shadow:rgba(0,0,0,.55);
+  }
+  body.light{
+    --fg:#0d1020;
+    --fg-dim:rgba(13,16,32,.66);
+    --fg-faint:rgba(13,16,32,.42);
+    --ind:#0d1020;
+    --ind-fg:#f4f6ff;
+    --edge:rgba(10,14,30,.16);
+    --edge-soft:rgba(10,14,30,.09);
+    --glass-tint:rgba(255,255,255,.28);
+    --panel-tint:rgba(255,255,255,.44);
+    --solid-fallback:rgba(255,255,255,.94);
+    --shadow:rgba(30,40,80,.22);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ scroll-behavior:smooth; overscroll-behavior-y:none; }
+  html,body{ margin:0; }
+  body{
+    min-height:100svh;
+    background:#050506;
+    font-family:var(--disp);
+    color:var(--fg);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+    overflow-x:hidden;
+    transition:color .4s;
+  }
+  body.light{ background:#e8ebf3; }
+  [hidden]{ display:none !important; }
+  canvas#bg, canvas#lens{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    display:block; pointer-events:none;
+  }
+  #bg{ z-index:0; }
+  #lens{ z-index:1; }          /* refraction lives HERE, under the DOM panes */
+  .no-gl #lens{ display:none; }
+
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(150,160,200,.25); border-radius:99px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding-inline:clamp(14px, 3vw, 32px); }
+
+  /* ---------- liquid glass chrome ----------
+     transparent pane + edge highlight + sheen. the visible bending
+     comes from the WebGL lens canvas beneath. NO backdrop-filter —
+     it would blur away the refraction. */
+  .glass{
+    border:1px solid var(--edge);
+    background-color:var(--glass-tint);
+    background-image:linear-gradient(115deg, rgba(255,255,255,.13), rgba(255,255,255,0) 45%);
+    box-shadow:
+      0 24px 60px -22px var(--shadow),
+      inset 0 1px 0 rgba(255,255,255,.28),
+      inset 0 -1px 0 rgba(255,255,255,.07);
+    transition:background-color .4s, border-color .4s, color .4s, box-shadow .3s;
+  }
+  /* big panels get a slightly deeper tint so forms stay readable,
+     but still transparent enough to see stars + refracted rims through */
+  .panel.glass{ background-color:var(--panel-tint); }
+  body.light .glass{
+    box-shadow:
+      0 24px 60px -26px var(--shadow),
+      inset 0 1px 0 rgba(255,255,255,.85),
+      inset 0 -1px 0 rgba(255,255,255,.3);
+  }
+  /* no WebGL → old-school frosted glass instead */
+  .no-gl .glass{
+    background-color:var(--solid-fallback);
+    -webkit-backdrop-filter:blur(18px) saturate(1.5);
+    backdrop-filter:blur(18px) saturate(1.5);
+  }
+
+  /* ---------- header ---------- */
+  .hero{
+    position:relative; z-index:4;
+    padding-top:calc(22px + env(safe-area-inset-top));
+    display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+    gap:14px 22px;
+  }
+  .hero h1{
+    margin:0; color:var(--fg);
+    font:700 clamp(30px,4.5vw,46px)/1 var(--disp);
+    letter-spacing:-.02em;
+    text-shadow:0 2px 24px rgba(0,0,0,.45);
+    transition:color .4s;
+  }
+  .hero p{
+    margin:9px 0 0; color:var(--fg-dim);
+    font:500 10.5px var(--mono); letter-spacing:.22em; text-transform:uppercase;
+    text-shadow:0 1px 10px rgba(0,0,0,.35);
+    transition:color .4s;
+  }
+  body.light .hero h1, body.light .hero p{ text-shadow:none; }
+
+  /* ---------- chips / scene bar ---------- */
+  .chips{
+    position:relative; height:52px; padding:5px;
+    display:flex; align-items:center;
+    min-width:0; max-width:100%;
+    border-radius:999px;
+    overflow-x:auto; scrollbar-width:none;
+  }
+  .chips::-webkit-scrollbar{ display:none; }
+  .chips .ind{
+    position:absolute; top:5px; left:5px; height:42px; width:0; flex:none;
+    border-radius:999px; background:var(--ind);
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+    transition:transform .35s var(--spring), width .35s var(--spring), background-color .4s;
+  }
+  .chips button, .chips a{
+    position:relative; flex:none; border:0; background:none; cursor:pointer;
+    height:42px; padding:0 15px; border-radius:999px;
+    color:var(--fg-dim); font:500 11px var(--mono); letter-spacing:.14em;
+    text-shadow:0 1px 8px rgba(0,0,0,.3);
+    text-decoration:none; display:inline-flex; align-items:center; gap:7px;
+    transition:color .25s;
+  }
+  body.light .chips button, body.light .chips a{ text-shadow:none; }
+  .chips button:hover:not(:disabled), .chips a:hover{ color:var(--fg); }
+  .chips button.on{ color:var(--ind-fg); text-shadow:none; }
+  .chips button:disabled{ opacity:.32; cursor:not-allowed; }
+  .chips button:focus-visible, .chips a:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:-4px; }
+  .chips .home{ margin-left:5px; padding-inline-start:16px; border-left:1px solid var(--edge-soft); border-radius:0; }
+
+  /* floating HOME button — mobile only. pinned top-right. */
+  .home-fab{
+    display:none;
+    position:fixed; z-index:60;
+    top:calc(14px + env(safe-area-inset-top));
+    right:14px;
+    width:58px; height:58px;
+    border-radius:50%;
+    align-items:center; justify-content:center;
+    color:var(--fg); text-decoration:none;
+  }
+  .home-fab svg{ display:block; }
+  .home-fab:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:3px; }
+  .home-fab:active{ transform:scale(.93); }
+
+  /* hamburger — appears when the nav collapses on scroll (mobile only).
+     opacity/scale are driven from JS so the WebGL lens alpha matches. */
+  .menu-fab{
+    display:none;
+    position:fixed; z-index:60;
+    top:calc(14px + env(safe-area-inset-top));
+    right:86px;
+    width:58px; height:58px;
+    border-radius:50%;
+    align-items:center; justify-content:center;
+    color:var(--fg); cursor:pointer;
+    opacity:0; pointer-events:none;
+    will-change:transform, opacity;
+  }
+  .menu-fab svg{ display:block; }
+  .menu-fab:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:3px; }
+
+  /* floating scene menu — opened by the hamburger (mobile only) */
+  .scene-menu{
+    display:none;
+    position:fixed; z-index:60;
+    top:calc(84px + env(safe-area-inset-top));
+    right:14px;
+    min-width:216px;
+    border-radius:20px;
+    padding:8px;
+    opacity:0; pointer-events:none;
+    will-change:transform, opacity;
+  }
+  .scene-menu button{
+    display:flex; align-items:center; gap:11px; width:100%;
+    border:0; background:none; cursor:pointer;
+    height:46px; padding:0 14px; border-radius:13px;
+    color:var(--fg-dim); font:600 11px var(--mono); letter-spacing:.16em;
+    text-align:left; transition:background-color .2s, color .2s;
+  }
+  .scene-menu button .dot{
+    width:8px; height:8px; flex:none; border-radius:50%;
+    border:1px solid var(--edge); background:transparent;
+    transition:background-color .2s, border-color .2s;
+  }
+  .scene-menu button:hover{ color:var(--fg); background:rgba(255,255,255,.05); }
+  .scene-menu button.on{ background:var(--ind); color:var(--ind-fg); }
+  .scene-menu button.on .dot{ background:var(--ind-fg); border-color:transparent; }
+  .scene-menu button:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:-3px; }
+
+  /* ---------- app grid ---------- */
+  .app{
+    position:relative; z-index:4;
+    margin-top:26px;
+    display:grid; grid-template-columns:minmax(0,344px) minmax(0,1fr);
+    gap:18px; align-items:start;
+  }
+  .panel{
+    border-radius:22px;
+    padding:18px 18px 16px;
+    display:flex; flex-direction:column; gap:13px; min-width:0;
+  }
+  .p-head{
+    display:flex; align-items:center; gap:10px; flex:none;
+    font:600 10px var(--mono); letter-spacing:.26em; text-transform:uppercase;
+    color:var(--fg-dim); transition:color .4s;
+  }
+  .p-head::after{ content:''; flex:1; height:1px; background:var(--edge-soft); }
+
+  /* drop zone */
+  .drop{
+    border:1px dashed var(--edge); border-radius:16px; padding:20px 12px 14px;
+    display:grid; gap:10px; justify-items:center; text-align:center;
+    cursor:pointer; transition:border-color .2s, background-color .2s;
+  }
+  .drop:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:3px; }
+  .drop .ico{
+    width:50px; height:50px; border-radius:50%;
+    display:grid; place-items:center;
+    border:1px solid var(--edge); background:rgba(255,255,255,.05);
+    color:var(--fg); transition:background-color .2s, transform .2s;
+  }
+  body.light .drop .ico{ background:rgba(13,16,32,.04); }
+  .drop:hover, .drop.over{ border-color:rgba(255,255,255,.45); background:rgba(255,255,255,.045); }
+  .drop:hover .ico, .drop.over .ico{ transform:translateY(-2px); background:rgba(255,255,255,.1); }
+  body.light .drop:hover, body.light .drop.over{ border-color:rgba(13,16,32,.42); background:rgba(13,16,32,.035); }
+  .drop .small{ font:500 12.5px var(--disp); color:var(--fg-dim); }
+  .note{ font:500 10px var(--mono); letter-spacing:.05em; color:var(--fg-faint); line-height:1.7; }
+
+  /* buttons */
+  .btn-line{
+    appearance:none; background:transparent; border:1px solid var(--edge);
+    color:var(--fg); font:600 11px var(--mono); letter-spacing:.16em;
+    padding:11px 18px; border-radius:999px; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;
+    min-height:42px;
+    transition:background-color .2s, color .2s, border-color .2s, transform .15s;
+  }
+  .btn-line:hover{ background:var(--fg); color:var(--ind-fg); border-color:transparent; }
+  .btn-line:active{ transform:scale(.96); }
+  .btn-line:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:2px; }
+  .btn-line.primary{ background:var(--fg); color:var(--ind-fg); border-color:transparent; }
+  .btn-line.primary:hover{ filter:brightness(1.1); }
+  .btn-line:disabled{ opacity:.35; pointer-events:none; }
+
+  /* segmented control */
+  .seg{
+    position:relative; height:46px; padding:5px; border-radius:999px;
+    border:1px solid var(--edge); background:rgba(255,255,255,.04);
+    display:flex; align-items:center;
+  }
+  body.light .seg{ background:rgba(13,16,32,.04); }
+  .seg .seg-ind{
+    position:absolute; top:5px; left:5px; height:34px; width:0;
+    border-radius:999px; background:var(--ind);
+    box-shadow:0 3px 10px rgba(0,0,0,.25);
+    transition:transform .3s var(--spring), width .3s var(--spring);
+  }
+  .seg button{
+    position:relative; flex:1; height:34px; border:0; background:none; cursor:pointer;
+    border-radius:999px; color:var(--fg-dim);
+    font:600 10.5px var(--mono); letter-spacing:.16em;
+    transition:color .25s;
+  }
+  .seg button.on{ color:var(--ind-fg); }
+  .seg button:focus-visible{ outline:2px solid var(--fg-dim); outline-offset:-4px; }
+
+  /* fields */
+  .controls{ display:grid; gap:10px; }
+  .crow{ display:grid; grid-template-columns:88px minmax(0,1fr) auto; gap:10px; align-items:center; }
+  .crow > label{
+    font:500 10px var(--mono); letter-spacing:.14em; text-transform:uppercase;
+    color:var(--fg-dim); transition:color .4s;
+  }
+  input[type="number"]{
+    width:100%; background:rgba(255,255,255,.04); border:1px solid var(--edge);
+    color:var(--fg); font:500 12px var(--mono); letter-spacing:.04em;
+    padding:10px 12px; border-radius:11px; outline:none; transition:border-color .2s;
+    -moz-appearance:textfield; appearance:textfield; min-height:42px;
+  }
+  body.light input[type="number"]{ background:rgba(13,16,32,.04); }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  input[type="number"]:focus{ border-color:rgba(255,255,255,.4); }
+  body.light input[type="number"]:focus{ border-color:rgba(13,16,32,.4); }
+  input[type="checkbox"]{ accent-color:var(--fg); width:18px; height:18px; margin:0; cursor:pointer; }
+
+  input[type="range"]{ -webkit-appearance:none; appearance:none; width:100%; height:28px; background:transparent; cursor:pointer; }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height:4px; border-radius:99px;
+    background:linear-gradient(90deg, var(--fg) var(--fill,80%), rgba(255,255,255,.14) var(--fill,80%));
+  }
+  body.light input[type="range"]::-webkit-slider-runnable-track{
+    background:linear-gradient(90deg, var(--fg) var(--fill,80%), rgba(13,16,32,.16) var(--fill,80%));
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; margin-top:-7px;
+    border-radius:50%; background:var(--fg);
+    border:3px solid var(--solid-fallback);
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  input[type="range"]::-moz-range-track{ height:4px; border-radius:99px; background:rgba(255,255,255,.14); }
+  input[type="range"]::-moz-range-progress{ height:4px; border-radius:99px; background:var(--fg); }
+  input[type="range"]::-moz-range-thumb{
+    width:12px; height:12px; border-radius:50%; background:var(--fg);
+    border:3px solid var(--solid-fallback); box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  .kbd{
+    font:600 10.5px var(--mono); letter-spacing:.06em; text-align:center;
+    padding:8px 10px; min-width:50px; border-radius:9px;
+    border:1px solid var(--edge); background:rgba(255,255,255,.04); color:var(--fg);
+  }
+  body.light .kbd{ background:rgba(13,16,32,.04); }
+  select{
+    width:100%; background:rgba(255,255,255,.04); border:1px solid var(--edge);
+    color:var(--fg); font:500 12px var(--mono); letter-spacing:.1em;
+    padding:10px 12px; border-radius:11px; outline:none; cursor:pointer; min-height:42px;
+  }
+  body.light select{ background:rgba(13,16,32,.04); }
+  select option{ color:#0c0e18; background:#f2f4ff; }
+
+  /* status + progress */
+  #sizeInfo{ font-size:10.5px; letter-spacing:.05em; word-break:break-all; min-height:15px; }
+  .progress{ height:4px; border-radius:999px; background:rgba(255,255,255,.1); overflow:hidden; flex:none; }
+  body.light .progress{ background:rgba(13,16,32,.12); }
+  .progress-bar{
+    height:100%; width:0%; border-radius:999px;
+    background:linear-gradient(90deg, rgba(255,255,255,.7), #fff);
+    transition:width .3s var(--ease); position:relative;
+  }
+  body.light .progress-bar{ background:linear-gradient(90deg, rgba(13,16,32,.6), #0d1020); }
+  .progress.busy .progress-bar::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
+    animation:shimmer 1s linear infinite;
+  }
+  @keyframes shimmer{ from{ transform:translateX(-100%);} to{ transform:translateX(100%);} }
+
+  .actions{ display:flex; gap:10px; }
+  .actions .btn-line{ flex:1; padding-inline:10px; }
+
+  /* output */
+  .preview{
+    flex:1; min-height:230px; padding:10px;
+    border:1px solid var(--edge); border-radius:16px;
+    display:grid; place-items:center; overflow:hidden;
+    background:rgba(0,0,0,.22);
+  }
+  body.light .preview{ background:rgba(13,16,32,.05); }
+  .preview-img{
+    max-width:100%; max-height:56vh; min-height:0;
+    object-fit:contain; border-radius:10px;
+    box-shadow:0 12px 40px rgba(0,0,0,.45);
+  }
+  body.light .preview-img{ box-shadow:0 12px 40px rgba(30,40,80,.25); }
+  .empty{ display:grid; gap:10px; justify-items:center; color:var(--fg-faint); }
+  .empty svg{ opacity:.55; }
+
+  .saved-chip{
+    align-self:flex-start;
+    display:inline-flex; align-items:center; gap:9px;
+    padding:9px 16px; border-radius:999px;
+    border:1px solid var(--edge); background:rgba(255,255,255,.06);
+    font:600 12px var(--mono); letter-spacing:.12em; color:var(--fg);
+  }
+  body.light .saved-chip{ background:rgba(13,16,32,.04); }
+  .saved-chip b{ font-size:15px; letter-spacing:.04em; }
+  .saved-chip .dot{ width:7px; height:7px; border-radius:50%; background:#4ade80; box-shadow:0 0 10px rgba(74,222,128,.8); }
+
+  .stats{
+    display:flex; flex-wrap:wrap; gap:6px 18px;
+    font:500 10.5px var(--mono); letter-spacing:.12em; color:var(--fg-dim);
+  }
+  .stats b{ color:var(--fg); font-weight:600; }
+  .out-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .out-actions .btn-line{ flex:1; min-width:140px; }
+
+  /* ---------- footer ---------- */
+  footer{
+    position:relative; z-index:4;
+    margin-top:30px;
+    padding:18px 0 calc(24px + env(safe-area-inset-bottom));
+    text-align:center;
+    color:var(--fg-dim); font:500 10.5px var(--mono); letter-spacing:.14em;
+    text-shadow:0 1px 8px rgba(0,0,0,.35);
+    transition:color .4s;
+  }
+  body.light footer{ text-shadow:none; }
+  footer a{ color:var(--fg-dim); text-decoration:none; border-bottom:1px solid var(--edge); }
+  footer a:hover{ color:var(--fg); }
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed; z-index:70; left:50%;
+    bottom:calc(22px + env(safe-area-inset-bottom));
+    height:46px; padding:0 22px; max-width:min(560px, 90vw);
+    display:flex; align-items:center; border-radius:999px;
+    color:var(--fg); font:500 11px var(--mono); letter-spacing:.18em;
+    opacity:0; transform:translate(-50%,10px);
+    transition:transform .3s, opacity .3s, color .4s;
+    pointer-events:none;
+  }
+  .toast.glass{ background-color:var(--panel-tint); }
+  .toast span{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .toast.show{ transform:translate(-50%,0); }
+
+  /* ---------- loader ---------- */
+  #nn-loader{
+    position:fixed; inset:0; z-index:999999;
+    background:#000; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .5s ease;
+  }
+  .nn-loader-box{ display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .nn-dot{
+    width:7px; height:7px; border-radius:50%; background:#fff; opacity:0;
+    animation:nn-blink 1s infinite ease-in-out;
+  }
+  @keyframes nn-blink{ 0%{opacity:0} 50%{opacity:1} 100%{opacity:0} }
+  #nn-loader-status{ font:500 14px var(--mono); letter-spacing:.08em; }
+  #nn-slow-hint{ font:400 11px var(--mono); opacity:.6; margin-top:4px; display:none; }
+  #nn-loader.hide{ opacity:0; pointer-events:none; }
+
+  /* ---------- mobile: top nav + collapse-on-scroll hamburger ---------- */
+  @media (max-width:860px){
+    /* hero title drops below the fixed nav (nav = 14 + 58 tall) */
+    .hero{ padding-top:calc(90px + env(safe-area-inset-top)); }
+    .hero h1{ font-size:29px; }
+    .hero p{ font-size:9.5px; letter-spacing:.18em; }
+
+    /* scene bar: floating glass dock pinned to the top edge */
+    .chips{
+      position:fixed; z-index:60;
+      top:calc(14px + env(safe-area-inset-top));
+      left:14px; right:86px;
+      height:58px; padding:6px;
+      max-width:none;
+      transition:transform .38s var(--spring), opacity .26s ease,
+                 background-color .4s, border-color .4s;
     }
-    <body style="overflow: hidden;">
-    html,body{height:100%;}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:linear-gradient(180deg,#000,#050505);-webkit-font-smoothing:antialiased;padding:18px}
-    .app{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:18px; padding-bottom:80px /* reserve for footer */;}
-    @media (max-width:980px){ .app{grid-template-columns:1fr} }
-    .panel{background:linear-gradient(180deg,var(--card), rgba(255,255,255,0.02));border:1px solid var(--ring);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
-    .drop{border:1px dashed var(--ring);border-radius:10px;padding:14px;display:grid;gap:8px;align-items:center;justify-items:center;text-align:center;cursor:pointer}
-    .btn{appearance:none;background:transparent;color:var(--text);border:1px solid var(--ring);padding:10px 12px;border-radius:8px;font-weight:700;cursor:pointer}
-    .btn.primary{background:var(--text);color:var(--bg);border-color:var(--bg)}
-    .row{display:flex;gap:8px;align-items:center}
-    input,select{background:transparent;border:1px solid var(--ring);color:var(--text);padding:8px;border-radius:8px}
-    label{font-size:13px;color:var(--muted)}
-    .muted{color:var(--muted);font-size:13px}
-    .preview{display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:12px}
-    img.preview-img{max-width:100%;max-height:60vh;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
-    .controls{display:grid;gap:10px}
-    .control-row{display:flex;gap:8px;align-items:center}
-    .kbd{padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
-    .progress{height:8px;background:var(--ring);border-radius:999px;overflow:hidden}
-    .progress-bar{height:100%;background:var(--text);width:0%;transition:width 200ms var(--ease)}
-    .small{font-size:13px}
-    .right{margin-left:auto}
-    .note{font-size:12px;color:var(--muted)}
-    .logo{width:44px;height:44px;border-radius:10px;overflow:hidden;display:grid;place-items:center}
-    .logo img{width:100%;height:100%;object-fit:cover}
-    /* compact loader */
-    .nn-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:0;animation:nn-blink 1s infinite ease-in-out}
-    @keyframes nn-blink{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
-
-    /* mobile-specific helpers: we'll hide the input panel on small screens when requested */
-    .hidden-mobile{display:flex} /* default for desktop */
-    @media (max-width:980px){
-      .hidden-mobile.hide { display: none !important; }
-      /* hide panels with .hide on narrow screens */
-      .panel.hide { display: none !important; }
+    /* collapse on scroll: slide the whole dock up and out */
+    body.nav-collapsed .chips{
+      transform:translateY(calc(-100% - 26px));
+      opacity:0; pointer-events:none;
     }
+    .chips .ind{ height:46px; top:6px; left:6px; }
+    .chips button, .chips a{ height:46px; padding:0 12px; font-size:10px; letter-spacing:.1em; }
+    .chips .home{ display:none; }   /* home lives in its own floating button now */
 
-    /* Home button style (glow like NNpdf) */
-    .home-btn {
-      position: fixed;
-      right: 18px;
-      top: 18px;
-      z-index: 40;
-      padding: 10px 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.02);
-      color: var(--text);
-      font-weight:700;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.6), 0 0 0 6px rgba(255,255,255,0.02);
-      cursor: pointer;
-      backdrop-filter: blur(6px);
-    }
-    .home-btn:active { transform: translateY(1px); }
-    .home-btn.glow {
-      box-shadow: 0 10px 28px rgba(255,255,255,0.06), 0 0 0 6px rgba(255,255,255,0.02), 0 0 20px rgba(255,255,255,0.02) inset;
-    }
-    /* Place tip bottom-left inside output panel */
-#outputPanel {
-  position: relative;
-}
+    /* HOME pinned top-right, round */
+    .home-fab{ display:flex; }
 
-#hint {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  opacity: 0.75;
-}
+    /* hamburger + scene menu (mobile only) */
+    .menu-fab{ display:flex; }
+    .scene-menu{ display:block; }
 
+    .app{ grid-template-columns:1fr; margin-top:18px; gap:14px; }
+    .panel{ border-radius:18px; padding:14px 14px 13px; gap:11px; }
+    .preview{ min-height:210px; }
+    .preview-img{ max-height:38vh; }
 
-    /* footer */
-    .site-footer {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 10px;
-      pointer-events: none; /* allow clicks to pass unless on child */
-    }
-    .site-footer .inner {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 18px; /* more breathing room */
-  color: var(--muted);
-  font-size: 13px;
-  pointer-events: auto;
-}
+    /* 16px inputs prevent iOS auto-zoom on focus */
+    input[type="number"], select{ font-size:16px; }
+    .crow{ grid-template-columns:76px minmax(0,1fr) auto; }
 
-    .site-footer a { color:var(--muted); text-decoration:none; font-weight:600; }
-    /* NoNonsense Loader CSS */
-#nn-loader {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999999;
-  transition: opacity .5s ease;
-}
-
-.nn-loader-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.nn-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: 0;
-  animation: nn-blink 1s infinite ease-in-out;
-}
-
-@keyframes nn-blink {
-  0% { opacity: 0; }
-  50% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-#nn-loader.hide {
-  opacity: 0;
-  pointer-events: none;
-}
-
-#nn-loader-status {
-  font-family: ui-monospace;
-  font-size: 14px;
-}
-
-#nn-slow-hint {
-  font-size: 12px;
-  opacity: .75;
-  margin-top: 6px;
-  display: none;
-}
-@property --glow-strength {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-
-.glow-btn {
-  --glow-color: rgb(255 255 255 / .70);
-  --glow-base: 2px;
-  --glow-radius: 10px;
-  --glow-spread: 2px;
-  --glow-strength: 0;
-
-  display: inline-flex;
-  align-items: center;
-  gap: .45rem;
-  padding: .6rem 1.1rem;
-  border-radius: .65rem;
-  background: transparent;
-  color: rgb(255 255 255 / .85);
-  border: 1.5px solid rgb(255 255 255 / .25);
-  outline: var(--glow-base) solid rgb(255 255 255 / .25);
-  box-shadow:
-    0 0 calc(var(--glow-radius) + 8px * var(--glow-strength))
-    calc(var(--glow-spread) + 2px * var(--glow-strength))
-    color-mix(in oklab, var(--glow-color) 100%, transparent);
-  animation: glow-pulse 2.2s ease-in-out infinite;
-  cursor: pointer;
-  transition: 
-    color .25s ease, 
-    background-color .25s ease, 
-    filter .25s ease;
-}
-
-.glow-btn:hover {
-  background: rgb(255 255 255 / .85);
-  color: black;
-  filter: drop-shadow(0 0 6px var(--glow-color)) drop-shadow(0 0 12px var(--glow-color));
-}
-
-.glow-btn:focus-visible {
-  --glow-strength: 1;
-  outline-color: rgb(255 255 255 / .6);
-}
-
-@keyframes glow-pulse {
-  0%, 100% { --glow-strength: .15; }
-  50%      { --glow-strength: 1; }
-}
-  </style>
+    .out-actions .btn-line{ min-width:110px; }
+    footer{ font-size:9.5px; }
+  }
+  @media (max-width:380px){
+    .hero{ padding-top:calc(84px + env(safe-area-inset-top)); }
+    .hero h1{ font-size:25px; }
+    .chips{ right:76px; top:calc(12px + env(safe-area-inset-top)); }
+    .home-fab{ width:52px; height:52px; right:10px; top:calc(12px + env(safe-area-inset-top)); }
+    .menu-fab{ width:52px; height:52px; right:72px; top:calc(12px + env(safe-area-inset-top)); }
+    .scene-menu{ top:calc(76px + env(safe-area-inset-top)); right:10px; }
+    .chips button, .chips a{ padding:0 10px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  }
+</style>
 </head>
 <body>
-    <!-- NoNonsense Loader HTML -->
+
+<canvas id="bg" aria-hidden="true"></canvas>
+<canvas id="lens" aria-hidden="true"></canvas>
+
+<!-- NoNonsense loader -->
 <div id="nn-loader" aria-live="polite">
   <div class="nn-loader-box">
     <div class="nn-dot"></div>
@@ -216,380 +524,1179 @@
     <div id="nn-slow-hint">your internet might be slow :(</div>
   </div>
 </div>
-  <!-- Home button (top-right) -->
-  <a class="home-btn glow-btn" id="homeBtn" href="./index.html" title="Return to Home" style="text-decoration: none;">Home</a>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div style="display:flex;gap:12px;align-items:center">
-        <div class="logo"><img src="logo.jpg" alt="logo"></div>
-      <div>
-        <div style="font-weight:800">NNicᵇᵉᵗᵃ</div>
-        <div class="muted">Compress • Resize • Optimize</div>
-      </div>
+<div class="wrap">
+
+  <header class="hero">
+    <div>
+      <h1>NNimg v2ᵇᵉᵗᵃ</h1>
+      <p>no-nonsense image compressor</p>
     </div>
-    <!-- intentionally empty: footer holds OSS text to match screenshot -->
-    <div style="width:70px"></div>
+
+    <nav class="chips glass" id="chips" aria-label="Backdrop scene">
+      <span class="ind" id="ind"></span>
+      <button type="button" class="on" data-scene="0">AURORA</button>
+      <button type="button" data-scene="1">TYPE</button>
+      <button type="button" data-scene="2">GRID</button>
+      <button type="button" data-scene="3" id="imgChip" disabled>IMAGE</button>
+      <a class="home" href="./index.html" aria-label="Return to home">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        HOME
+      </a>
+    </nav>
+  </header>
+
+  <!-- mobile-only floating HOME button, pinned top-right -->
+  <a class="home-fab glass" href="./index.html" aria-label="Return to home">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+  </a>
+
+  <!-- mobile-only hamburger, revealed when the nav collapses on scroll -->
+  <button class="menu-fab glass" id="menuFab" type="button"
+          aria-label="Open scene menu" aria-expanded="false" aria-controls="sceneMenu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <path d="M4 7h16M4 12h16M4 17h16"/>
+    </svg>
+  </button>
+
+  <!-- floating scene menu for the collapsed state -->
+  <div class="scene-menu glass" id="sceneMenu" role="menu" aria-label="Backdrop scene">
+    <button type="button" class="on" role="menuitem" data-scene="0"><span class="dot"></span>AURORA</button>
+    <button type="button" role="menuitem" data-scene="1"><span class="dot"></span>TYPE</button>
+    <button type="button" role="menuitem" data-scene="2"><span class="dot"></span>GRID</button>
+    <button type="button" role="menuitem" data-scene="3" id="imgMenuItem" disabled><span class="dot"></span>IMAGE</button>
   </div>
 
-  <div class="app">
-    <!-- INPUT panel (give it an id so we can hide it on mobile) -->
-    <section id="inputPanel" class="panel hidden-mobile">
-      <div class="muted">Input</div>
-      <div id="drop" class="drop" tabindex="0"> 
-        <div class="small">Drag & drop or</div>
-        <div class="row"><input id="fileInput" type="file" accept="image/*" style="display:none"><button id="pick" class="btn primary">Choose image</button></div>
-        <div class="note">Supports PNG, JPEG, WebP. Animated GIFs will be flattened to first frame.</div>
+  <main class="app" id="app">
+
+    <!-- INPUT -->
+    <section class="panel glass" id="inputPanel" aria-label="Input">
+      <div class="p-head">Input</div>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image">
+        <span class="ico">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="3.5"/>
+            <circle cx="9" cy="9" r="1.8"/>
+            <path d="M21 15.5l-4.6-4.6a1.6 1.6 0 0 0-2.3 0L4.5 20.5"/>
+          </svg>
+        </span>
+        <div class="small">drag &amp; drop · paste · or pick</div>
+        <input id="fileInput" type="file" accept="image/*" hidden>
+        <button id="pick" class="btn-line primary" type="button">CHOOSE IMAGE</button>
+        <div class="note">png · jpeg · webp — gif flattens to first frame</div>
       </div>
 
-      <div class="muted">Mode</div>
-      <div class="row">
-        <label><input type="radio" name="mode" value="auto" checked> Auto (target −75% size)</label>
-        <label style="margin-left:12px"><input type="radio" name="mode" value="manual"> Manual</label>
+      <div class="p-head">Mode</div>
+      <div class="seg" id="modeSeg" aria-label="Compression mode">
+        <span class="seg-ind" id="segInd"></span>
+        <button type="button" class="on" data-mode="auto" aria-pressed="true">AUTO −75%</button>
+        <button type="button" data-mode="manual" aria-pressed="false">MANUAL</button>
       </div>
 
-      <div id="manualControls" style="display:none" class="controls">
-        <div class="control-row"><label style="width:120px">Width (px)</label><input id="widthInput" type="number" min="1" placeholder="auto"></div>
-        <div class="control-row"><label style="width:120px">Height (px)</label><input id="heightInput" type="number" min="1" placeholder="auto"></div>
-        <div class="control-row"><label style="width:120px">Aspect lock</label><input id="lockAspect" type="checkbox" checked></div>
-        <div class="control-row"><label style="width:120px">Quality</label><input id="quality" type="range" min="0.05" max="1" step="0.01" value="0.8"><div class="kbd" id="qVal">0.80</div></div>
+      <div class="controls" id="manualControls" hidden>
+        <div class="crow"><label for="widthInput">Width</label><input id="widthInput" type="number" inputmode="numeric" min="1" placeholder="auto"></div>
+        <div class="crow"><label for="heightInput">Height</label><input id="heightInput" type="number" inputmode="numeric" min="1" placeholder="auto"></div>
+        <div class="crow"><label for="lockAspect">Lock ratio</label><span></span><input id="lockAspect" type="checkbox" checked></div>
+        <div class="crow" id="qualityRow"><label for="quality">Quality</label><input id="quality" type="range" min="0.05" max="1" step="0.01" value="0.8"><span class="kbd" id="qVal">0.80</span></div>
+      </div>
+      <div class="note" id="autoNote">binary-searches quality, then steps the scale down, until the result lands near 25% of the original size.</div>
+
+      <div class="crow"><label for="fmt">Format</label>
+        <select id="fmt" aria-label="Output format"></select><span></span>
       </div>
 
-      <div class="muted">Actions</div>
-      <div class="row">
-        <button id="compressBtn" class="btn primary" disabled>Compress</button>
-        <button id="resetBtn" class="btn">Reset</button>
-        <div class="right muted" id="sizeInfo">—</div>
-      </div>
+      <div class="p-head">Status</div>
+      <div id="sizeInfo" class="note" style="font-size:10.5px" aria-live="polite">—</div>
+      <div class="progress" id="progWrap" aria-hidden="true"><div class="progress-bar" id="prog"></div></div>
 
-      <div class="progress" aria-hidden="true"><div id="prog" class="progress-bar"></div></div>
+      <div class="actions">
+        <button id="resetBtn" class="btn-line" type="button" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.3"/><path d="M3 4v5h5"/></svg>
+          RESET
+        </button>
+        <button id="compressBtn" class="btn-line primary" type="button" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3v6M12 15v6"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3"/><path d="M4 12h16"/>
+          </svg>
+          <span id="compressLabel">COMPRESS</span>
+        </button>
+      </div>
     </section>
 
-    <!-- OUTPUT / Preview panel -->
-    <section id="outputPanel" class="panel hide">
-      <div class="muted">Preview & Output</div>
+    <!-- OUTPUT -->
+    <section class="panel glass" id="outputPanel" aria-label="Preview and output">
+      <div class="p-head">Preview &amp; Output</div>
       <div class="preview">
-        <div id="previewWrap" style="width:100%"><img id="previewImg" class="preview-img" src="" alt="Preview" style="display:none"></div>
-        <div style="display:flex;gap:8px;width:100%">
-          <div class="muted">Original:</div><div id="origSize" class="muted">—</div>
-          <div class="right muted">Result: <span id="outSize">—</span></div>
+        <div class="empty" id="emptyState">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="7" y="3" width="14" height="14" rx="2.5"/>
+            <path d="M17 17v1.5A2.5 2.5 0 0 1 14.5 21H5.5A2.5 2.5 0 0 1 3 18.5V9.5A2.5 2.5 0 0 1 5.5 7H7"/>
+          </svg>
+          <div class="note">result lands here</div>
         </div>
-        <div style="display:flex;gap:8px;width:100%">
-          <a id="downloadLink" class="btn" style="display:none;text-decoration: none;">Download</a>
-          <button id="openBtn" class="btn" style="display:none">Open</button>
-          <div class="note" id="hint">Note: Auto mode targets ~75% size reduction using iterative quality + scale tuning.</div>
-        </div>
+        <img id="previewImg" class="preview-img" alt="compressed result" hidden decoding="async">
+      </div>
+      <div class="saved-chip" id="savedChip" hidden><span class="dot"></span>SAVED <b id="saved">—</b></div>
+      <div class="stats" aria-live="polite">
+        <span>ORIG <b id="origSize">—</b></span>
+        <span>OUT <b id="outSize">—</b></span>
+        <span id="dims">—</span>
+      </div>
+      <div class="out-actions">
+        <a id="downloadLink" class="btn-line primary" hidden download>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m6 12 6 6 6-6"/><path d="M5 21h14"/></svg>
+          DOWNLOAD
+        </a>
+        <button id="openBtn" class="btn-line" type="button" hidden>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg>
+          OPEN
+        </button>
       </div>
     </section>
-  </div>
 
-  <!-- Footer (fixed) -->
-  <footer class="site-footer" role="contentinfo" aria-hidden="false">
-    <div class="inner">
-      <div>© 2025 No-Nonsense</div>
-      <div>Open source • <a href="#" aria-label="License link">MIT</a></div>
-    </div>
+  </main>
+
+  <footer>
+    © 2025 NO-NONSENSE · OPEN SOURCE · <a href="#" id="mitLink" aria-label="License link">MIT</a>
   </footer>
-  <script>
-// NoNonsense Loader JS — Updated Texts
-(function () {
-  const statuses = ['on the verge!', 'ready!'];
-  const statusEl = document.getElementById('nn-loader-status');
-  const slowEl = document.getElementById('nn-slow-hint');
-  const loader = document.getElementById('nn-loader');
 
+</div>
+
+<div class="toast glass" id="toast" aria-live="polite"><span id="toastTxt"></span></div>
+
+<script>
+/* NoNonsense loader — handles instant/cached loads + safety timeout */
+(function () {
+  const statuses = ['warming up', 'on the verge!'];
+  const statusEl = document.getElementById('nn-loader-status');
+  const slowEl   = document.getElementById('nn-slow-hint');
+  const loader   = document.getElementById('nn-loader');
   let idx = 0, cycling = true;
 
-  // Rotate loading messages
-  function cycle() {
+  (function cycle(){
     if (!cycling) return;
     statusEl.textContent = statuses[idx % statuses.length];
     idx++;
     setTimeout(cycle, 800);
-  }
-  cycle();
+  })();
 
-  // Show slow warning after 500ms
-  const slowTimer = setTimeout(() => {
-    if (cycling) slowEl.style.display = "block";
-  }, 500);
+  const slowTimer = setTimeout(() => { if (cycling) slowEl.style.display = 'block'; }, 900);
 
-  // When page fully loads
-  window.addEventListener('load', () => {
+  function finish(){
+    if (!loader || !loader.parentNode) return;
     clearTimeout(slowTimer);
     cycling = false;
-    statusEl.textContent = "ready!";
-
+    statusEl.textContent = 'ready!';
     setTimeout(() => {
-      loader.classList.add("hide");
+      loader.classList.add('hide');
       setTimeout(() => loader.remove(), 600);
-    }, 500);
-  });
+    }, 400);
+  }
+
+  if (document.readyState === 'complete') finish();
+  else window.addEventListener('load', finish, { once:true });
+  setTimeout(finish, 6000);
 })();
-  </script>
+</script>
 
 <script>
-// Utilities
-const pick = document.getElementById('pick');
-const fileInput = document.getElementById('fileInput');
-const drop = document.getElementById('drop');
-const previewImg = document.getElementById('previewImg');
-const previewWrap = document.getElementById('previewWrap');
-const compressBtn = document.getElementById('compressBtn');
-const resetBtn = document.getElementById('resetBtn');
-const modeRadios = Array.from(document.querySelectorAll('input[name="mode"]'));
-const manualControls = document.getElementById('manualControls');
-const widthInput = document.getElementById('widthInput');
-const heightInput = document.getElementById('heightInput');
-const lockAspect = document.getElementById('lockAspect');
-const qualityEl = document.getElementById('quality');
-const qVal = document.getElementById('qVal');
-const origSizeEl = document.getElementById('origSize');
-const outSizeEl = document.getElementById('outSize');
-const sizeInfo = document.getElementById('sizeInfo');
-const downloadLink = document.getElementById('downloadLink');
-const openBtn = document.getElementById('openBtn');
-const prog = document.getElementById('prog');
-const inputPanel = document.getElementById('inputPanel');
-const outputPanel = document.getElementById('outputPanel');
-const homeBtn = document.getElementById('homeBtn');
+(() => {
+'use strict';
 
+/* ============================================================
+   Elements & state
+============================================================ */
+const $ = s => document.querySelector(s);
+const bgCv = $('#bg'), lensCv = $('#lens');
+const drop = $('#drop'), fileInput = $('#fileInput'), pick = $('#pick');
+const compressBtn = $('#compressBtn'), compressLabel = $('#compressLabel');
+const resetBtn = $('#resetBtn');
+const manualControls = $('#manualControls'), autoNote = $('#autoNote');
+const modeSeg = $('#modeSeg'), segInd = $('#segInd');
+const segBtns = [...modeSeg.querySelectorAll('button')];
+const widthInput = $('#widthInput'), heightInput = $('#heightInput');
+const lockAspect = $('#lockAspect'), qualityEl = $('#quality'), qVal = $('#qVal');
+const qualityRow = $('#qualityRow'), fmtSel = $('#fmt');
+const origSizeEl = $('#origSize'), outSizeEl = $('#outSize');
+const savedChip = $('#savedChip'), savedEl = $('#saved');
+const dimsEl = $('#dims'), sizeInfoEl = $('#sizeInfo');
+const downloadLink = $('#downloadLink'), openBtn = $('#openBtn');
+const emptyState = $('#emptyState'), previewImg = $('#previewImg');
+const prog = $('#prog'), progWrap = $('#progWrap');
+const chipsEl = $('#chips'), chipBtns = [...chipsEl.querySelectorAll('button[data-scene]')];
+const imgChip = $('#imgChip'), ind = $('#ind');
+const toastEl = $('#toast'), toastTxt = $('#toastTxt');
+const menuFab = $('#menuFab'), sceneMenu = $('#sceneMenu');
+const menuBtns = [...sceneMenu.querySelectorAll('button[data-scene]')];
+const imgMenuItem = $('#imgMenuItem');
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FINE_PTR = matchMedia('(pointer: fine)').matches;
+const NAMES = ['AURORA', 'TYPE', 'GRID', 'IMAGE'];
+const EXT = { 'image/webp':'webp', 'image/jpeg':'jpg', 'image/png':'png' };
+
+let W = innerWidth, H = innerHeight;
+let dpr = Math.min(devicePixelRatio || 1, 2);
+let MOB = W <= 860;
+let mode = 0;                 /* scene index */
+let compMode = 'auto';        /* compression mode */
+let toastA = 0, toastTarget = 0, toastTimer = null;
+
+/* nav collapse / hamburger state */
+let navCollapsed = false;
+let menuOpen = false;
+let mfabA = 0, menuA = 0;     /* JS-lerped alphas so the lens matches */
+
+const ctx = bgCv.getContext('2d');
+
+/* compressor state */
 let currentFile = null;
-let imgNatural = {w:0,h:0};
-let lastBlob = null;
+let srcBitmap = null, srcW = 0, srcH = 0;
 let lastUrl = null;
+let busy = false;
 
-function human(n){ if (!n && n!==0) return '—'; if (n<1024) return n+' B'; if (n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(2)+' MB'; }
+const WEBP_OK = (() => {
+  try { return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0; }
+  catch (e) { return false; }
+})();
 
-// Mode toggle
-modeRadios.forEach(r=> r.addEventListener('change', ()=>{
-  if (r.checked && r.value==='manual') manualControls.style.display='block'; else if (r.checked) manualControls.style.display='none';
-}));
+/* ============================================================
+   Pattern helpers
+============================================================ */
+function rgba(hex, a){
+  const v = parseInt(hex.slice(1), 16);
+  return `rgba(${v>>16&255},${v>>8&255},${v&255},${a})`;
+}
+const dotPat = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 26;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(13,13,1.1,0,7); g.fill();
+  return ctx.createPattern(c,'repeat');
+})();
+const grainPat = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const im = g.createImageData(128,128), d = im.data;
+  for(let i=0;i<d.length;i+=4){
+    const v = 108 + (Math.random()*40|0);
+    d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+  }
+  g.putImageData(im,0,0);
+  return ctx.createPattern(c,'repeat');
+})();
 
-// Home button -> scroll to top / reset UI
-if (homeBtn) homeBtn.addEventListener('click', ()=> {
-  window.scrollTo({top:0,behavior:'smooth'});
-  // small visual feedback
-  homeBtn.classList.add('glow');
-  setTimeout(()=> homeBtn.classList.remove('glow'), 420);
-  // show input panel (useful for mobile)
-  setMobileHideInput(false);
-  setMobileShowOutput(false);
-});
-
-// Defensive: ensure Choose button is a proper non-submit button and attach click
-if (pick) {
-  pick.setAttribute('type','button');
-  const newPick = pick.cloneNode(true);
-  pick.parentNode.replaceChild(newPick, pick);
-  newPick.addEventListener('click', ()=> {
-    if (fileInput) fileInput.click();
-  });
+function base(){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  if(mode === 2){ g.addColorStop(0,'#eef1f9'); g.addColorStop(1,'#d9dfee'); }
+  else          { g.addColorStop(0,'#000'); g.addColorStop(.6,'#08080a'); g.addColorStop(1,'#020203'); }
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+}
+function dots(a){
+  ctx.globalAlpha = a; ctx.fillStyle = dotPat;
+  ctx.fillRect(0,0,W,H); ctx.globalAlpha = 1;
+}
+function grain(){
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = .11; ctx.fillStyle = grainPat;
+  ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+function vignette(){
+  const g = ctx.createRadialGradient(W/2, H*.46, Math.min(W,H)*.36, W/2, H*.5, Math.max(W,H)*.75);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(1, mode===2 ? 'rgba(20,26,48,.14)' : 'rgba(0,0,0,.42)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
 }
 
-// Defensive: attach file input change (re-attach even if original exists)
-if (fileInput) {
-  fileInput.addEventListener('change', async (e)=>{ 
-    if (e.target.files && e.target.files[0]) await handleFile(e.target.files[0]); 
-    e.target.value=''; 
-  });
-}
-
-// Drag/drop
-if (drop) {
-  ['dragenter','dragover','dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{ 
-    e.preventDefault(); e.stopPropagation(); 
-    if (ev==='dragenter' || ev==='dragover') drop.classList.add('drag-over'); else drop.classList.remove('drag-over'); 
+/* ============================================================
+   SCENE 0 — AURORA: black & grey night — stars, silver curtains,
+   shooting stars. Strictly monochrome.
+============================================================ */
+let stars = [];
+function makeStars(){
+  const n = MOB ? 70 : 140;
+  stars = Array.from({length:n}, () => ({
+    x: Math.random()*W, y: Math.random()*H*.85,
+    r: .4 + Math.random()*1.2,
+    a: .2 + Math.random()*.65,
+    ph: Math.random()*6.28, sp: .4 + Math.random()*1.4
   }));
-  drop.addEventListener('drop', e=>{ const f = (e.dataTransfer.files||[])[0]; if (f) handleFile(f); });
+}
+function drawStars(T){
+  ctx.fillStyle = '#fff';
+  for(const s of stars){
+    const tw = s.a * (.5 + .5*Math.sin(T*s.sp + s.ph));
+    if(tw < .03) continue;
+    ctx.globalAlpha = tw;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
-audioLock = false;
-async function handleFile(file){
-  if (!file.type.startsWith('image/')) { alert('Please pick an image'); return; }
-  currentFile = file;
-  origSizeEl.textContent = human(file.size);
-  sizeInfo.textContent = 'Loaded: '+file.name;
-  // read as dataURL
-  const dataUrl = await readAsDataURL(file);
-  previewImg.src = dataUrl; previewImg.style.display='block';
-  // measure natural size
-  await new Promise(r=>{ previewImg.onload = ()=>{ imgNatural.w = previewImg.naturalWidth; imgNatural.h = previewImg.naturalHeight; r(); } });
-  widthInput.value = imgNatural.w; heightInput.value = imgNatural.h;
-  compressBtn.disabled = false;
-  outSizeEl.textContent = '—';
-  downloadLink.style.display = 'none'; openBtn.style.display='none';
-  // hide output until user presses Compress (mobile behavior)
-  setMobileShowOutput(false);
-  ensurePanelsVisible();
+const AURA_BLOBS = [
+  { c:'#3a3f4a', a:.20, ax:.30, ay:.18, sx:.10, sy:.07, fx:0.0, fy:1.1 },
+  { c:'#262a33', a:.24, ax:.26, ay:.14, sx:.07, sy:.10, fx:2.4, fy:0.3 },
+  { c:'#4a4e58', a:.14, ax:.22, ay:.16, sx:.09, sy:.06, fx:4.6, fy:2.8 },
+];
+const RIBBONS = [
+  { c:[228,232,240], y0:.32, a1:.075, a2:.03,  f1:.0042, f2:.011, s1:.32, s2:.21, len:.40, al:.14 },
+  { c:[178,184,196], y0:.28, a1:.09,  a2:.026, f1:.0031, f2:.009, s1:.24, s2:.30, len:.46, al:.11 },
+  { c:[204,208,218], y0:.40, a1:.06,  a2:.034, f1:.0050, f2:.013, s1:.28, s2:.18, len:.34, al:.12 },
+  { c:[150,156,168], y0:.45, a1:.048, a2:.024, f1:.0038, f2:.010, s1:.20, s2:.26, len:.28, al:.09 },
+];
+function ribbon(r, T){
+  const step = MOB ? 34 : 22;
+  const yb = H*r.y0;
+  const amp1 = H*r.a1, amp2 = H*r.a2, len = H*r.len;
+  const yc = x =>
+    yb + Math.sin(x*r.f1 + T*r.s1)*amp1
+       + Math.sin(x*r.f2 - T*r.s2 + 1.7)*amp2;
+  const fill = (l, alpha) => {
+    ctx.beginPath();
+    ctx.moveTo(-4, yc(0));
+    for(let x = step; x <= W + step; x += step) ctx.lineTo(x, yc(x));
+    for(let x = W + step; x >= -4; x -= step) ctx.lineTo(x, yc(x) + l);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, yb - amp1 - amp2, 0, yb - amp1 + l);
+    const [cr,cg,cb] = r.c;
+    g.addColorStop(0,   `rgba(${cr},${cg},${cb},0)`);
+    g.addColorStop(.18, `rgba(${cr},${cg},${cb},${alpha})`);
+    g.addColorStop(.72, `rgba(${cr},${cg},${cb},${alpha*.42})`);
+    g.addColorStop(1,   `rgba(${cr},${cg},${cb},0)`);
+    ctx.fillStyle = g;
+    ctx.fill();
+  };
+  fill(len, r.al);
+  fill(len*.3, r.al*1.5);   /* hot core near the top edge */
 }
-function readAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=err=>rej(err); r.readAsDataURL(file); }); }
 
-// Maintain aspect
-widthInput.addEventListener('input', ()=>{ if (!lockAspect.checked) return; const w = Number(widthInput.value); if (!w) return; const h = Math.round(w * (imgNatural.h / imgNatural.w)); heightInput.value = h; });
-heightInput.addEventListener('input', ()=>{ if (!lockAspect.checked) return; const h = Number(heightInput.value); if (!h) return; const w = Math.round(h * (imgNatural.w / imgNatural.h)); widthInput.value = w; });
-qualityEl.addEventListener('input', ()=> qVal.textContent = Number(qualityEl.value).toFixed(2));
-
-// Helper: decide if we are on mobile / narrow viewport
-function isNarrow(){ return window.innerWidth <= 980; }
-
-// Show/hide panels appropriately on mobile
-function setMobileHideInput(hide){
-  if (!inputPanel) return;
-  if (isNarrow()){
-    if (hide) inputPanel.classList.add('hide');
-    else inputPanel.classList.remove('hide');
-  } else {
-    // desktop: always show both panels
-    inputPanel.classList.remove('hide');
+/* shooting stars */
+const shoots = [];
+let nextShoot = 2.5;
+function updateShoots(T){
+  if(reduced) return;
+  if(T > nextShoot && shoots.length < 2){
+    const fromLeft = Math.random() < .5;
+    shoots.push({
+      x: fromLeft ? W*(.55 + Math.random()*.4) : W*(.05 + Math.random()*.4),
+      y: H*(.04 + Math.random()*.24),
+      vx: (fromLeft ? -1 : 1) * (340 + Math.random()*280),
+      vy: 140 + Math.random()*130,
+      t0: T, life: .9 + Math.random()*.5,
+      len: 90 + Math.random()*70
+    });
+    nextShoot = T + 3 + Math.random()*5;
+  }
+  for(let i = shoots.length - 1; i >= 0; i--){
+    const s = shoots[i];
+    const age = T - s.t0;
+    if(age > s.life){ shoots.splice(i,1); continue; }
+    const k = age / s.life;
+    const x = s.x + s.vx*age, y = s.y + s.vy*age;
+    const a = Math.sin(k*Math.PI) * .9;
+    const d = Math.hypot(s.vx, s.vy);
+    const tx = x - (s.vx/d)*s.len, ty = y - (s.vy/d)*s.len;
+    const g = ctx.createLinearGradient(x, y, tx, ty);
+    g.addColorStop(0, `rgba(255,255,255,${a})`);
+    g.addColorStop(.4, `rgba(220,224,232,${a*.4})`);
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.beginPath(); ctx.arc(x, y, 1.4, 0, 7); ctx.fill();
   }
 }
 
-// Show/hide output panel on narrow (keeps parity with input hide/show)
-function setMobileShowOutput(show){
-  if (!outputPanel) return;
-  if (isNarrow()){
-    if (show) outputPanel.classList.remove('hide');
-    else outputPanel.classList.add('hide');
-  } else {
-    // desktop: always show
-    outputPanel.classList.remove('hide');
+function aurora(T){
+  ctx.globalCompositeOperation = 'lighter';
+  for(const b of AURA_BLOBS){
+    const x = W*(.5 + b.ax*Math.sin(T*b.sx*2.0 + b.fx));
+    const y = H*(.5 + b.ay*Math.cos(T*b.sy*2.0 + b.fy));
+    const r = Math.min(W,H)*.9;
+    const g = ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0, rgba(b.c, b.a));
+    g.addColorStop(1, rgba(b.c, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(x-r, y-r, r*2, r*2);
   }
+  for(const r of RIBBONS) ribbon(r, T);
+  ctx.globalCompositeOperation = 'source-over';
+  drawStars(T);
+  updateShoots(T);
+  dots(.03);
 }
 
-function ensurePanelsVisible(){
-  // on desktop both present; on mobile ensure input is visible unless we've hidden it
-  if (!isNarrow()){
-    inputPanel.style.display = 'flex';
-    outputPanel.style.display = 'flex';
-  } else {
-    // keep current class state
-    inputPanel.style.display = inputPanel.classList.contains('hide') ? 'none' : 'flex';
-    outputPanel.style.display = outputPanel.classList.contains('hide') ? 'none' : 'flex';
-  }
-}
-
-// Compress logic
-compressBtn.addEventListener('click', async ()=>{
-  if (!currentFile) return;
-  // Hide the input panel immediately when user presses Compress and show output
-  setMobileHideInput(true);
-  setMobileShowOutput(true);
-
-  prog.style.width = '20%';
-  compressBtn.disabled = true;
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  const originalSize = currentFile.size;
-  try{
-    if (mode==='manual'){
-      const w = Number(widthInput.value) || imgNatural.w;
-      const h = Number(heightInput.value) || imgNatural.h;
-      const quality = Number(qualityEl.value) || 0.8;
-      const blob = await compressImage(previewImg, w, h, quality);
-      await onResult(blob, originalSize);
-    } else {
-      // AUTO: target size ≈ original * 0.25 (reduce by 75%)
-      const target = Math.max(2000, Math.floor(originalSize * 0.25)); // at least 2KB target
-      const blob = await compressToTarget(previewImg, originalSize, target);
-      await onResult(blob, originalSize);
+/* ============================================================
+   SCENE 1 — TYPE: marquee rows + travelling spotlight
+============================================================ */
+function typeMode(T){
+  const F  = Math.max(52, Math.min(W*.15, 185));
+  const sp = F*1.16;
+  ctx.font = `700 ${F}px "Space Grotesk", sans-serif`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const unit = 'NNIMG · COMPRESS · ';
+  const uw = Math.max(1, ctx.measureText(unit).width);
+  const rows = Math.ceil(H/sp) + 1;
+  for(let r=0; r<rows; r++){
+    const y   = r*sp + sp*.5;
+    const dir = r%2 ? -1 : 1;
+    const off = ((T*(18 + r*7)*dir) % uw + uw) % uw;
+    const k   = r % 5;
+    const stroke = (k===1 || k===3);
+    if(k===1){ ctx.strokeStyle='rgba(243,246,255,.42)'; ctx.lineWidth=Math.max(1,F*.009); }
+    else if(k===3){ ctx.strokeStyle=rgba('#18c9ff',.5); ctx.lineWidth=Math.max(1,F*.009); }
+    else if(k===2){ ctx.fillStyle=rgba('#ff2e88',.9); }
+    else if(k===4){ ctx.fillStyle=rgba('#ff9d2e',.82); }
+    else ctx.fillStyle='rgba(243,246,255,.92)';
+    for(let x=-off-uw; x<W+uw; x+=uw){
+      stroke ? ctx.strokeText(unit,x,y) : ctx.fillText(unit,x,y);
     }
-  }catch(err){ alert('Compression failed: '+err.message); console.error(err); }
+  }
+  const sx = W*(.5 + .34*Math.sin(T*.16));
+  const sy = H*(.42 + .2*Math.cos(T*.11));
+  const sr = Math.min(W,H)*.55;
+  const g = ctx.createRadialGradient(sx,sy,0,sx,sy,sr);
+  g.addColorStop(0,'rgba(255,255,255,.16)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.globalCompositeOperation = 'soft-light';
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.globalCompositeOperation = 'source-over';
+  dots(.05);
+}
+
+/* ============================================================
+   SCENE 2 — GRID: light calibration card + perspective floor
+============================================================ */
+function gridMode(T){
+  const m = Math.min(W,H);
+  const ink = 'rgba(13,16,32,';
+  const hy = H*.46;
+  const vx = W*.5 + Math.sin(T*.13)*W*.03;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = ink + '.4)';
+  ctx.beginPath();
+  for(let i=-14; i<=14; i++){
+    ctx.moveTo(vx + i*22, hy);
+    ctx.lineTo(vx + i*W*.11, H + 20);
+  }
+  const rows = 15;
+  for(let i=1; i<=rows; i++){
+    const p = (i/rows);
+    const y = hy + (H - hy)*p*p;
+    ctx.moveTo(0, y); ctx.lineTo(W, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = rgba('#ff8a2a',.9);
+  ctx.beginPath();
+  ctx.arc(W*.28+Math.sin(T*.22)*W*.05, H*.24+Math.cos(T*.17)*H*.04, m*.085, 0, 7);
+  ctx.fill();
+  ctx.strokeStyle = rgba('#6d4bff',.85); ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(W*.74+Math.cos(T*.15)*W*.04, H*.30+Math.sin(T*.19)*H*.04, m*.12, 0, 7);
+  ctx.stroke();
+  const bx = ((T*36) % (W+700)) - 350;
+  ctx.save(); ctx.translate(bx, hy); ctx.rotate(-.2);
+  ctx.fillStyle = ink + '.85)';
+  for(let x=-450; x<450; x+=34) ctx.fillRect(x, -60, 14, 120);
+  ctx.restore();
+  ctx.strokeStyle = ink + '.28)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(let x=.5; x<=W; x+=28){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+  for(let y=.5; y<=H; y+=28){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+  ctx.stroke();
+  ctx.strokeStyle = ink + '.55)'; ctx.lineWidth = 1.4;
+  const cr = 9;
+  for(const [fx,fy] of [[.25,.22],[.75,.22],[.25,.78],[.75,.78]]){
+    const x = W*fx, y = H*fy;
+    ctx.beginPath();
+    ctx.moveTo(x-cr,y); ctx.lineTo(x+cr,y);
+    ctx.moveTo(x,y-cr); ctx.lineTo(x,y+cr);
+    ctx.stroke();
+  }
+  ctx.fillStyle = ink + '.62)';
+  ctx.font = '500 10px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('NNIMG COMPRESSION TEST CARD · MODE C', W-24, 100);
+  ctx.fillText('GRID 28PX · PERSPECTIVE FLOOR', W-24, 116);
+  ctx.textAlign = 'left';
+}
+
+/* ============================================================
+   SCENE 3 — IMAGE: loaded photo (parallax only on fine pointers)
+============================================================ */
+let imgLayer = null;
+let ptr = { x:0, y:0, tx:0, ty:0 };
+if(FINE_PTR){
+  addEventListener('pointermove', e => {
+    ptr.tx = (e.clientX / W - .5);
+    ptr.ty = (e.clientY / H - .5);
+  }, { passive:true });
+}
+function buildImageLayer(){
+  if(!srcBitmap) return;
+  imgLayer = document.createElement('canvas');
+  imgLayer.width = Math.max(1, W); imgLayer.height = Math.max(1, H);
+  const g = imgLayer.getContext('2d');
+  const s = Math.max(W/srcW, H/srcH) * 1.12;
+  const dw = srcW*s, dh = srcH*s;
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(srcBitmap, (W-dw)/2, (H-dh)/2, dw, dh);
+  g.fillStyle = 'rgba(0,0,0,.45)';
+  g.fillRect(0,0,W,H);
+}
+function imageScene(T){
+  if(!srcBitmap){ dots(.05); return; }
+  if(!imgLayer || imgLayer.width !== W || imgLayer.height !== H) buildImageLayer();
+  if(reduced || !FINE_PTR){
+    ctx.drawImage(imgLayer, 0, 0);
+  }else{
+    ptr.x += (ptr.tx - ptr.x)*.04;
+    ptr.y += (ptr.ty - ptr.y)*.04;
+    const z = 1.05 + Math.sin(T*.1)*.015;
+    const w = W*z, h = H*z;
+    const ox = Math.sin(T*.07)*10 + ptr.x*22;
+    const oy = Math.cos(T*.09)*8  + ptr.y*16;
+    ctx.drawImage(imgLayer, (W-w)/2 + ox, (H-h)/2 + oy, w, h);
+  }
+  dots(.04);
+}
+
+function drawScene(now){
+  const T = reduced ? 12 : now;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  base();
+  if(mode===0) aurora(T);
+  else if(mode===1) typeMode(T);
+  else if(mode===2) gridMode(T);
+  else imageScene(T);
+  vignette();
+  grain();
+}
+
+/* ============================================================
+   WebGL lens — 8 pane slots, no pulses.
+   Rects measured fresh every frame so refraction stays glued to
+   the panels while the page scrolls (and while the nav collapses).
+============================================================ */
+const VERT = `
+attribute vec2 aPos;
+void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }
+`;
+const FRAG = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec2 uRes;
+uniform sampler2D uTex;
+uniform vec4 uRect[8];
+uniform float uRad[8];
+uniform vec4 uPar[8];
+uniform float uDpr;
+
+float sdBox(vec2 p, vec2 b, float r){
+  vec2 q = abs(p) - b + r;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+vec2 gradBox(vec2 p, vec2 b, float r){
+  float e = 1.0;
+  return vec2(
+    sdBox(p + vec2(e,0.0), b, r) - sdBox(p - vec2(e,0.0), b, r),
+    sdBox(p + vec2(0.0,e), b, r) - sdBox(p - vec2(0.0,e), b, r));
+}
+vec3 fetch(vec2 px){ return texture2D(uTex, px / uRes).rgb; }
+
+void main(){
+  vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec4 acc = vec4(0.0);
+  float aa = 1.5 * uDpr;
+
+  for(int i = 0; i < 8; i++){
+    vec4 par = uPar[i];
+    if(par.w <= 0.003) continue;
+
+    vec4 rc = uRect[i];
+    vec2 p  = px - rc.xy;
+    float d = sdBox(p, rc.zw, uRad[i]);
+    float a = 1.0 - smoothstep(-aa, aa, d);
+    if(a <= 0.0) continue;
+
+    float inside = max(-d, 0.0);
+    vec2 g = gradBox(p, rc.zw, uRad[i]);
+    vec2 nrm = g / (length(g) + 1e-5);
+    float t = 1.0 - clamp(inside / par.x, 0.0, 1.0);
+    t = pow(t, 1.45);
+    vec2 disp = -nrm * (t * par.y);
+
+    float ab = par.z;
+    vec3 col;
+    col.r = fetch(px + disp * (1.0 + ab)).r;
+    col.g = fetch(px + disp).g;
+    col.b = fetch(px + disp * (1.0 - ab)).b;
+
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(vec3(lum), col, 1.14);
+    col = col * 1.05 + 0.012;
+
+    float rimW = min(par.x * 0.55, 12.0 * uDpr);
+    float rimT = pow(1.0 - clamp(inside / rimW, 0.0, 1.0), 2.0);
+    vec2 Ld = normalize(vec2(-0.5, -0.85));
+    float lit = clamp(0.62 + 0.38 * dot(nrm, Ld), 0.0, 1.0);
+    col += col * rimT * lit * 0.9 + rimT * lit * 0.10;
+    float shT = rimT * clamp(0.5 - 0.5 * dot(nrm, Ld), 0.0, 1.0);
+    col *= 1.0 - 0.30 * shT;
+
+    float aa2 = a * par.w;
+    acc = vec4(col * aa2, aa2) + acc * (1.0 - aa2);
+  }
+  gl_FragColor = acc;
+}
+`;
+
+let gl = null, uni = {};
+function initGL(){
+  const mk = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const p = gl.createProgram();
+  gl.attachShader(p, mk(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(p, mk(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  gl.useProgram(p);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(p, 'aPos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+  ['uRes','uRect','uRad','uPar','uDpr']
+    .forEach(n => uni[n] = gl.getUniformLocation(p, n));
+  gl.uniform1i(gl.getUniformLocation(p, 'uTex'), 0);
+}
+try{
+  gl = lensCv.getContext('webgl', { alpha:true, antialias:false, depth:false, stencil:false, premultipliedAlpha:true });
+  if(gl) initGL();
+}catch(e){ gl = null; }
+if(!gl){
+  document.body.classList.add('no-gl');
+  lensCv.addEventListener('webglcontextlost', () => document.body.classList.add('no-gl'));
+}
+
+/* pane slots: input, output, chips, compress, reset, toast,
+   hamburger, scene-menu */
+const R4 = new Float32Array(32), RAD = new Float32Array(8);
+const P4 = new Float32Array(32);
+const CONF = {
+  input:  { bevel:30, str:30, ab:.05,  rad:22 },
+  output: { bevel:30, str:30, ab:.05,  rad:22 },
+  chips:  { bevel:15, str:22, ab:.05 },
+  cbtn:   { bevel:14, str:24, ab:.06 },
+  rbtn:   { bevel:11, str:18, ab:.05 },
+  toast:  { bevel:12, str:18, ab:.05 },
+  mfab:   { bevel:13, str:22, ab:.06 },
+  menu:   { bevel:22, str:26, ab:.05, rad:20 },
+};
+
+function lensPass(){
+  const r = {
+    input:  $('#inputPanel').getBoundingClientRect(),
+    output: $('#outputPanel').getBoundingClientRect(),
+    chips:  chipsEl.getBoundingClientRect(),
+    cbtn:   compressBtn.getBoundingClientRect(),
+    rbtn:   resetBtn.getBoundingClientRect(),
+    toast:  toastEl.getBoundingClientRect(),
+    mfab:   menuFab.getBoundingClientRect(),
+    menu:   sceneMenu.getBoundingClientRect(),
+  };
+  let n = 0;
+  const put = (rect, bevel, str, ab, al, rad) => {
+    if(!rect || rect.width <= 0 || rect.height <= 0) return;
+    if(rect.bottom < -40 || rect.top > H + 40) return;   /* scrolled away */
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    R4[n*4]   = cx*dpr;        R4[n*4+1] = cy*dpr;
+    R4[n*4+2] = rect.width/2*dpr; R4[n*4+3] = rect.height/2*dpr;
+    RAD[n] = Math.max(1, rad*dpr);
+    P4[n*4] = bevel*dpr; P4[n*4+1] = str*dpr;
+    P4[n*4+2] = ab; P4[n*4+3] = al;
+    n++;
+  };
+  const C = CONF;
+  put(r.input,  C.input.bevel,  C.input.str,  C.input.ab,  1, C.input.rad);
+  put(r.output, C.output.bevel, C.output.str, C.output.ab, 1, C.output.rad);
+  put(r.chips,  C.chips.bevel,  C.chips.str,  C.chips.ab,  1, r.chips.height/2);
+  put(r.cbtn,   C.cbtn.bevel,   C.cbtn.str,   C.cbtn.ab,   1, r.cbtn.height/2);
+  put(r.rbtn,   C.rbtn.bevel,   C.rbtn.str,   C.rbtn.ab,   1, r.rbtn.height/2);
+  put(r.toast,  C.toast.bevel,  C.toast.str,  C.toast.ab,  toastA, r.toast.height/2);
+  put(r.mfab,   C.mfab.bevel,   C.mfab.str,   C.mfab.ab,   mfabA, r.mfab.height/2);
+  put(r.menu,   C.menu.bevel,   C.menu.str,   C.menu.ab,   menuA, C.menu.rad);
+
+  for(let i=n; i<8; i++) P4[i*4+3] = 0;
+
+  gl.viewport(0, 0, lensCv.width, lensCv.height);
+  gl.clearColor(0,0,0,0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bgCv);
+  gl.uniform2f(uni.uRes, lensCv.width, lensCv.height);
+  gl.uniform1f(uni.uDpr, dpr);
+  gl.uniform4fv(uni.uRect, R4);
+  gl.uniform1fv(uni.uRad, RAD);
+  gl.uniform4fv(uni.uPar, P4);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+/* ============================================================
+   Compressor — fast decode + binary-search targeting
+============================================================ */
+const work = document.createElement('canvas');
+const wctx = work.getContext('2d');
+const tp = [document.createElement('canvas'), document.createElement('canvas')];
+
+function human(n){
+  if(!n && n !== 0) return '—';
+  if(n < 1024) return n + ' B';
+  if(n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(2) + ' MB';
+}
+function setProg(p){
+  prog.style.width = p + '%';
+  progWrap.classList.toggle('busy', p > 0 && p < 100);
+}
+function clampDim(v, fb){
+  const n = Math.round(Number(v));
+  if(!n || n < 1) return fb;
+  return Math.min(8192, n);
+}
+function showToast(txt){
+  toastTxt.textContent = txt;
+  toastTarget = 1;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastTarget = 0;
+    toastEl.classList.remove('show');
+  }, 1900);
+}
+
+async function decode(file){
+  if(window.createImageBitmap){
+    try { return await createImageBitmap(file, { imageOrientation:'from-image' }); }
+    catch(e){ try { return await createImageBitmap(file); } catch(e2){} }
+  }
+  const url = URL.createObjectURL(file);
+  try{
+    const img = new Image();
+    img.decoding = 'async';
+    await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('decode failed')); img.src = url; });
+    return img;
+  }finally{ URL.revokeObjectURL(url); }
+}
+
+async function loadFile(file){
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('NOT AN IMAGE'); return; }
+  if(busy){ showToast('BUSY — HOLD ON'); return; }
+  try{
+    const bmp = await decode(file);
+    if(lastUrl){ URL.revokeObjectURL(lastUrl); lastUrl = null; }
+    if(srcBitmap && srcBitmap.close){ try{ srcBitmap.close(); }catch(e){} }
+    srcBitmap = bmp;
+    srcW = bmp.width || bmp.naturalWidth;
+    srcH = bmp.height || bmp.naturalHeight;
+    currentFile = file;
+    imgLayer = null;
+
+    origSizeEl.textContent = human(file.size);
+    widthInput.value = srcW; heightInput.value = srcH;
+    sizeInfoEl.textContent = `${file.name} · ${srcW}×${srcH}`;
+    compressBtn.disabled = false;
+    resetBtn.disabled = false;
+
+    previewImg.hidden = true; previewImg.removeAttribute('src');
+    emptyState.hidden = false;
+    downloadLink.hidden = true; openBtn.hidden = true;
+    savedChip.hidden = true;
+    outSizeEl.textContent = '—'; dimsEl.textContent = '—';
+    setProg(0);
+
+    imgChip.disabled = false;
+    imgMenuItem.disabled = false;
+    buildImageLayer();
+    if(mode !== 3) setScene(3, false);
+    showToast(`LOADED · ${human(file.size)}`);
+  }catch(err){
+    console.error(err);
+    showToast('COULD NOT DECODE');
+  }
+}
+
+/* progressive halving → final draw (sharper than one big downscale) */
+function prepSource(w, h){
+  w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+  if(work.width !== w) work.width = w;
+  if(work.height !== h) work.height = h;
+  wctx.imageSmoothingEnabled = true; wctx.imageSmoothingQuality = 'high';
+  wctx.clearRect(0, 0, w, h);
+  let src = srcBitmap, sw = srcW, sh = srcH, flip = 0;
+  while(sw*.5 > w && sh*.5 > h && sw > 2 && sh > 2){
+    const c = tp[flip]; flip ^= 1;
+    const cw = Math.max(1, sw >> 1), ch = Math.max(1, sh >> 1);
+    if(c.width !== cw) c.width = cw;
+    if(c.height !== ch) c.height = ch;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.clearRect(0, 0, cw, ch);
+    g.drawImage(src, 0, 0, cw, ch);
+    src = c; sw = cw; sh = ch;
+  }
+  wctx.drawImage(src, 0, 0, w, h);
+}
+
+function encode(m, q){
+  if(m === 'image/jpeg'){
+    wctx.globalCompositeOperation = 'destination-over';
+    wctx.fillStyle = '#fff';
+    wctx.fillRect(0, 0, work.width, work.height);
+    wctx.globalCompositeOperation = 'source-over';
+  }
+  return new Promise((res, rej) =>
+    work.toBlob(b => b ? res(b) : rej(new Error('encode failed')), m, q));
+}
+
+async function manualCompress(m){
+  const w = clampDim(widthInput.value, srcW);
+  const h = clampDim(heightInput.value, srcH);
+  prepSource(w, h);
+  const q = m === 'image/png' ? undefined : Number(qualityEl.value);
+  const blob = await encode(m, q);
+  return { blob, w, h };
+}
+
+async function autoCompress(m){
+  const target = Math.max(2048, Math.floor(currentFile.size * 0.25));
+  const lossy = m !== 'image/png';
+  let w = srcW, h = srcH, best = null, smallest = null;
+  const steps = 7;
+  for(let s = 0; s < steps; s++){
+    prepSource(w, h);
+    if(lossy){
+      let lo = .30, hi = .92;
+      for(let i = 0; i < 6 && hi - lo > .035; i++){
+        const q = (lo + hi) / 2;
+        const b = await encode(m, q);
+        if(!smallest || b.size < smallest.blob.size) smallest = { blob:b, w, h };
+        if(b.size <= target){ best = { blob:b, w, h }; lo = q; } else hi = q;
+        setProg(8 + ((s + (i+1)/6) / steps) * 84);
+      }
+    }else{
+      const b = await encode(m);
+      if(!smallest || b.size < smallest.blob.size) smallest = { blob:b, w, h };
+      if(b.size <= target) best = { blob:b, w, h };
+      setProg(8 + ((s+1) / steps) * 84);
+    }
+    if(best) return best;
+    w = Math.max(1, Math.round(w * .8));
+    h = Math.max(1, Math.round(h * .8));
+  }
+  showToast('TARGET MISSED — BEST EFFORT');
+  return smallest;
+}
+
+function onResult(res, t0){
+  if(lastUrl) URL.revokeObjectURL(lastUrl);
+  lastUrl = URL.createObjectURL(res.blob);
+  previewImg.src = lastUrl; previewImg.hidden = false;
+  emptyState.hidden = true;
+
+  const baseName = (currentFile.name || 'image').replace(/\.[^.]+$/, '');
+  const mime = fmtMime();
+  downloadLink.href = lastUrl;
+  downloadLink.download = `${baseName}-nnimg.${EXT[mime] || 'jpg'}`;
+  downloadLink.hidden = false; openBtn.hidden = false;
+
+  const pct = Math.max(0, 100 - Math.round(res.blob.size / currentFile.size * 100));
+  savedChip.hidden = false;
+  savedEl.textContent = pct + '%';
+  outSizeEl.textContent = human(res.blob.size);
+  dimsEl.textContent = `${srcW}×${srcH} → ${res.w}×${res.h}`;
+  const ms = Math.round(performance.now() - t0);
+  sizeInfoEl.textContent = `done in ${ms} ms`;
+  showToast(`−${pct}% · ${human(res.blob.size)} · ${ms}MS`);
+}
+
+compressBtn.addEventListener('click', async () => {
+  if(!currentFile || busy) return;
+  busy = true;
+  compressBtn.disabled = true;
+  compressLabel.textContent = 'WORKING';
+  const t0 = performance.now();
+  setProg(8);
+  try{
+    const m = fmtMime();
+    const res = compMode === 'auto'
+      ? await autoCompress(m)
+      : await manualCompress(m);
+    setProg(100);
+    onResult(res, t0);
+    setTimeout(() => setProg(0), 700);
+    if(MOB) $('#outputPanel').scrollIntoView({ behavior:'smooth', block:'start' });
+  }catch(err){
+    console.error(err);
+    showToast('COMPRESSION FAILED');
+    setProg(0);
+  }
+  busy = false;
   compressBtn.disabled = false;
-  prog.style.width = '100%'; setTimeout(()=>prog.style.width='0%',600);
+  compressLabel.textContent = 'COMPRESS';
 });
 
-async function onResult(blob, originalSize){
-  lastBlob = blob;
-  if (lastUrl) URL.revokeObjectURL(lastUrl);
-  lastUrl = URL.createObjectURL(blob);
-  downloadLink.href = lastUrl; downloadLink.download = (currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'image') + '-compressed.jpg';
-  downloadLink.style.display='inline-flex';
-  openBtn.style.display='inline-flex';
-  openBtn.onclick = ()=> window.open(lastUrl, '_blank');
-  outSizeEl.textContent = human(blob.size);
-  sizeInfo.textContent = `Saved: ${(100 - Math.round((blob.size/originalSize)*100))}%`;
-  // ensure output panel is visible (especially on mobile)
-  setMobileShowOutput(true);
-  ensurePanelsVisible();
-}
+/* ============================================================
+   Input wiring — picker, drop anywhere, paste
+============================================================ */
+drop.addEventListener('click', e => {
+  if(e.target.closest('#pick')) return;
+  fileInput.click();
+});
+pick.addEventListener('click', () => fileInput.click());
+drop.addEventListener('keydown', e => {
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileInput.click(); }
+});
+fileInput.addEventListener('change', async e => {
+  if(e.target.files && e.target.files[0]) await loadFile(e.target.files[0]);
+  e.target.value = '';
+});
 
-// compress image into jpeg/webp blob at specified size
-function compressImage(imgEl, targetW, targetH, quality=0.8, mime='image/jpeg'){
-  return new Promise((res,rej)=>{
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(targetW));
-    canvas.height = Math.max(1, Math.round(targetH));
-    const ctx = canvas.getContext('2d');
-    // draw with smoothing
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(b=>{ if (b) res(b); else rej(new Error('toBlob failed')); }, mime, quality);
+let dragT = null;
+['dragover', 'drop'].forEach(ev => addEventListener(ev, e => e.preventDefault()));
+addEventListener('dragover', e => {
+  drop.classList.add('over');
+  clearTimeout(dragT);
+  dragT = setTimeout(() => drop.classList.remove('over'), 140);
+});
+addEventListener('drop', e => {
+  drop.classList.remove('over');
+  const f = [...(e.dataTransfer.files || [])].find(f => f.type.startsWith('image/'));
+  if(f) loadFile(f);
+  else if(e.dataTransfer && e.dataTransfer.files.length) showToast('NOT AN IMAGE');
+});
+addEventListener('paste', e => {
+  const item = [...((e.clipboardData && e.clipboardData.items) || [])]
+    .find(i => i.type.startsWith('image/'));
+  if(item) loadFile(item.getAsFile());
+});
+
+/* segmented control */
+function setSeg(i){
+  compMode = i === 0 ? 'auto' : 'manual';
+  segBtns.forEach((b, j) => {
+    b.classList.toggle('on', j === i);
+    b.setAttribute('aria-pressed', String(j === i));
   });
+  segInd.style.width = segBtns[i].offsetWidth + 'px';
+  segInd.style.transform = `translateX(${segBtns[i].offsetLeft - 5}px)`;
+  const manual = compMode === 'manual';
+  manualControls.hidden = !manual;
+  autoNote.hidden = manual;
 }
+segBtns.forEach((b, i) => b.addEventListener('click', () => setSeg(i)));
 
-// iterative strategy to reach target file size (for auto mode)
-async function compressToTarget(imgEl, originalSize, targetSize){
-  // start with original dimensions, lower quality and then scale down progressively
-  let quality = 0.85;
-  let scale = 1;
-  let lastBlobLocal = null;
-  const minQuality = 0.25;
-  const minScale = 0.15;
-  // try a few iterations reducing quality first, then scale
-  for (let iter=0; iter<12; iter++){
-    const w = Math.max(1, Math.round(imgNatural.w * scale));
-    const h = Math.max(1, Math.round(imgNatural.h * scale));
-    prog.style.width = (10 + iter*6) + '%';
-    const blob = await compressImage(imgEl, w, h, quality);
-    lastBlobLocal = blob;
-    if (blob.size <= targetSize) return blob;
-    // reduce quality if above minQuality, else reduce scale
-    if (quality > minQuality) { quality = Math.max(minQuality, quality - 0.12); }
-    else { scale = Math.max(minScale, scale - 0.18); }
-    // break early if too small scale
-    if (scale <= minScale && quality <= minQuality) break;
+widthInput.addEventListener('input', () => {
+  if(!lockAspect.checked || !srcW) return;
+  const w = Number(widthInput.value);
+  if(!w) return;
+  heightInput.value = Math.round(w * srcH / srcW);
+});
+heightInput.addEventListener('input', () => {
+  if(!lockAspect.checked || !srcW) return;
+  const h = Number(heightInput.value);
+  if(!h) return;
+  widthInput.value = Math.round(h * srcW / srcH);
+});
+function paintRange(){
+  const min = +qualityEl.min, max = +qualityEl.max;
+  qualityEl.style.setProperty('--fill', ((qualityEl.value - min)/(max - min)*100) + '%');
+  qVal.textContent = Number(qualityEl.value).toFixed(2);
+}
+qualityEl.addEventListener('input', paintRange);
+paintRange();
+
+function fmtMime(){
+  const v = fmtSel.value;
+  return v === 'jpeg' ? 'image/jpeg' : v === 'png' ? 'image/png' : 'image/webp';
+}
+(function initFmt(){
+  if(WEBP_OK){
+    fmtSel.add(new Option('WEBP · SMALLEST', 'webp'));
+    fmtSel.value = 'webp';
   }
-  // if couldn't hit target, return the best we got (smallest)
-  return lastBlobLocal;
-}
+  fmtSel.add(new Option('JPEG', 'jpeg'));
+  fmtSel.add(new Option('PNG · LOSSLESS', 'png'));
+  if(!WEBP_OK) fmtSel.value = 'jpeg';
+  fmtSel.addEventListener('change', () => {
+    qualityRow.hidden = fmtSel.value === 'png';
+  });
+})();
 
-// Reset
-resetBtn.addEventListener('click', ()=>{ 
-  currentFile=null; 
-  previewImg.src=''; 
-  previewImg.style.display='none'; 
-  origSizeEl.textContent='—'; 
-  outSizeEl.textContent='—'; 
-  sizeInfo.textContent='—'; 
-  compressBtn.disabled=true; 
-  downloadLink.style.display='none'; 
-  openBtn.style.display='none'; 
-  if (lastUrl){ URL.revokeObjectURL(lastUrl); lastUrl=null; } 
-  // restore panels
-  setMobileHideInput(false);
-  setMobileShowOutput(false);
+resetBtn.addEventListener('click', () => {
+  if(busy) return;
+  currentFile = null;
+  if(srcBitmap && srcBitmap.close){ try{ srcBitmap.close(); }catch(e){} }
+  srcBitmap = null; imgLayer = null;
+  if(lastUrl){ URL.revokeObjectURL(lastUrl); lastUrl = null; }
+  previewImg.hidden = true; previewImg.removeAttribute('src');
+  emptyState.hidden = false;
+  origSizeEl.textContent = '—'; outSizeEl.textContent = '—';
+  savedChip.hidden = true; dimsEl.textContent = '—';
+  sizeInfoEl.textContent = '—';
+  compressBtn.disabled = true; resetBtn.disabled = true;
+  downloadLink.hidden = true; openBtn.hidden = true;
+  widthInput.value = ''; heightInput.value = '';
+  imgChip.disabled = true;
+  imgMenuItem.disabled = true;
+  setProg(0);
+  if(mode !== 0) setScene(0, false);
+  showToast('RESET');
 });
 
-// keep panels state correct on resize
-window.addEventListener('resize', ()=>{
-  if (!isNarrow()){
-    inputPanel.style.display = 'flex';
-    inputPanel.classList.remove('hide');
-    outputPanel.style.display = 'flex';
-    outputPanel.classList.remove('hide');
-  } else {
-    // on narrow view if class hide present, hide input
-    inputPanel.style.display = inputPanel.classList.contains('hide') ? 'none' : 'flex';
-    outputPanel.style.display = outputPanel.classList.contains('hide') ? 'none' : 'flex';
-  }
+openBtn.addEventListener('click', () => { if(lastUrl) window.open(lastUrl, '_blank'); });
+ $('#mitLink').addEventListener('click', e => e.preventDefault());
+
+/* ============================================================
+   Scenes / nav collapse / layout / main loop
+============================================================ */
+function setScene(i, silent){
+  mode = i;
+  chipBtns.forEach((b, j) => b.classList.toggle('on', j === i));
+  menuBtns.forEach((b, j) => b.classList.toggle('on', j === i));
+  const b = chipBtns[i];
+  ind.style.width = b.offsetWidth + 'px';
+  /* indicator offset relative to the container's content — subtract
+     the current horizontal scroll so it lands on the button even when
+     the mobile dock has been swiped */
+  ind.style.transform = `translateX(${b.offsetLeft - 5 - chipsEl.scrollLeft}px)`;
+  document.body.classList.toggle('light', i === 2);
+  if(!silent) showToast(`0${i+1} — ${NAMES[i]}`);
+}
+chipBtns.forEach(b => b.addEventListener('click', () => { if(!b.disabled) setScene(+b.dataset.scene); }));
+chipsEl.addEventListener('scroll', () => setScene(mode, true), { passive:true });
+
+/* ---------- collapse-on-scroll → hamburger ---------- */
+function closeMenu(){
+  if(!menuOpen) return;
+  menuOpen = false;
+  menuFab.setAttribute('aria-expanded', 'false');
+}
+function setCollapsed(v){
+  if(navCollapsed === v) return;
+  navCollapsed = v;
+  document.body.classList.toggle('nav-collapsed', v);
+  if(!v) closeMenu();          /* nav back → menu has nowhere to live */
+}
+addEventListener('scroll', () => {
+  if(menuOpen) closeMenu();    /* any scroll dismisses the open menu */
+  if(!MOB) return;             /* collapse behaviour is mobile-only */
+  setCollapsed(scrollY > 90);
+}, { passive:true });
+
+menuFab.addEventListener('click', () => {
+  menuOpen = !menuOpen;
+  menuFab.setAttribute('aria-expanded', String(menuOpen));
+});
+menuBtns.forEach(b => b.addEventListener('click', () => {
+  if(b.disabled) return;
+  setScene(+b.dataset.scene);
+  closeMenu();
+}));
+document.addEventListener('pointerdown', e => {
+  if(!menuOpen) return;
+  if(e.target.closest('#sceneMenu') || e.target.closest('#menuFab')) return;
+  closeMenu();
 });
 
-// initial layout fix
-ensurePanelsVisible();
+function resize(){
+  W = innerWidth; H = innerHeight;
+  MOB = W <= 860;
+  dpr = Math.min(devicePixelRatio || 1, MOB ? 1.75 : 2);
+  bgCv.width = Math.round(W*dpr); bgCv.height = Math.round(H*dpr);
+  lensCv.width = bgCv.width; lensCv.height = bgCv.height;
+  makeStars();
+  if(srcBitmap) imgLayer = null;
+  if(!MOB) setCollapsed(false);   /* leaving mobile restores the dock */
+  setScene(mode, true);
+  setSeg(compMode === 'auto' ? 0 : 1);
+}
+/* debounced — mobile URL bars fire resize repeatedly */
+let rsT = null;
+function queueResize(){
+  clearTimeout(rsT);
+  rsT = setTimeout(resize, 120);
+}
+addEventListener('resize', queueResize);
+if(window.visualViewport) visualViewport.addEventListener('resize', queueResize);
 
+/* pause rendering when the tab is hidden (battery) */
+let hidden = document.hidden;
+document.addEventListener('visibilitychange', () => {
+  const nowHidden = document.hidden;
+  if(!nowHidden && hidden){ last = 0; requestAnimationFrame(frame); }
+  hidden = nowHidden;
+});
+
+let last = 0;
+function frame(tms){
+  if(hidden) return;
+  const now = tms/1000;
+  const dt = last ? Math.min(.05, Math.max(.001, now - last)) : .016;
+  last = now;
+
+  toastA += (toastTarget - toastA)*Math.min(1, dt*9);
+  toastEl.style.opacity = toastA.toFixed(3);
+
+  /* hamburger + scene menu — JS-driven so the WebGL lens alpha,
+     scale, and position all animate in perfect sync with the DOM */
+  mfabA += ((navCollapsed ? 1 : 0) - mfabA)*Math.min(1, dt*10);
+  menuA  += ((menuOpen ? 1 : 0) - menuA)*Math.min(1, dt*10);
+  menuFab.style.opacity = mfabA.toFixed(3);
+  menuFab.style.transform = `scale(${(0.6 + 0.4*mfabA).toFixed(3)})`;
+  menuFab.style.pointerEvents = mfabA > .5 ? 'auto' : 'none';
+  sceneMenu.style.opacity = menuA.toFixed(3);
+  sceneMenu.style.transform =
+    `translateY(${(-10*(1-menuA)).toFixed(1)}px) scale(${(0.96 + 0.04*menuA).toFixed(3)})`;
+  sceneMenu.style.pointerEvents = menuA > .5 ? 'auto' : 'none';
+
+  drawScene(now);
+  if(gl) lensPass();
+
+  requestAnimationFrame(frame);
+}
+
+/* boot */
+resize();
+setSeg(0);
+document.fonts.ready.then(() => {
+  setScene(mode, true);
+  setSeg(compMode === 'auto' ? 0 : 1);
+});
+requestAnimationFrame(frame);
+
+})();
 </script>
 
 </body>
 </html>
-     
